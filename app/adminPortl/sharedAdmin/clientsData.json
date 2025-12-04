@@ -1,0 +1,152 @@
+[
+  {
+    "_id": "1",
+    "first_name": "Ahmed",
+    "last_name": "Mohamed",
+    "email": "ahmed@example.com",
+    "role": "Client",
+    "status": "Active",
+    "group": {
+      "createdAt": "2025-03-15T10:00:00Z",
+      "members": [1, 2, 3],
+      "max_members": 5,
+      "status": "Open",
+      "name": "Luxury Villa Project"
+    }
+  },
+  {
+    "_id": "2",
+    "first_name": "Fatma",
+    "last_name": "Ali",
+    "email": "fatma@example.com",
+    "role": "Client",
+    "status": "Inactive",
+    "group": {
+      "createdAt": "2025-02-20T08:30:00Z",
+      "members": [4],
+      "max_members": 4,
+      "status": "Closed",
+      "name": "Downtown Apartments"
+    }
+  },
+  {
+    "_id": "3",
+    "first_name": "Khaled",
+    "last_name": "Ibrahim",
+    "email": "khaled@example.com",
+    "role": "Client",
+    "status": "Active",
+    "group": {
+      "createdAt": "2025-01-10T14:20:00Z",
+      "members": [5, 6],
+      "max_members": 10,
+      "status": "Open",
+      "name": "Smart Home Complex"
+    }
+  },
+  {
+    "_id": "4",
+    "first_name": "Noor",
+    "last_name": "Hassan",
+    "email": "noor@example.com",
+    "role": "Client",
+    "status": "Active",
+    "group": {
+      "createdAt": "2025-04-01T09:15:00Z",
+      "members": [7],
+      "max_members": 5,
+      "status": "Open",
+      "name": "Beach View Apartments"
+    }
+  },
+  {
+    "_id": "5",
+    "first_name": "Yousef",
+    "last_name": "Abdelrahman",
+    "email": "yousef@example.com",
+    "role": "Client",
+    "status": "Inactive",
+    "group": {
+      "createdAt": "2024-12-05T11:45:00Z",
+      "members": [],
+      "max_members": 20,
+      "status": "Closed",
+      "name": "City Tower Residences"
+    }
+  },
+  {
+    "_id": "6",
+    "first_name": "Mona",
+    "last_name": "Salah",
+    "email": "mona@example.com",
+    "role": "Client",
+    "status": "Active",
+    "group": {
+      "createdAt": "2025-03-01T12:10:00Z",
+      "members": [8, 9],
+      "max_members": 6,
+      "status": "Open",
+      "name": "Green Park Compound"
+    }
+  },
+  {
+    "_id": "7",
+    "first_name": "Omar",
+    "last_name": "Hassan",
+    "email": "omar@example.com",
+    "role": "Client",
+    "status": "Active",
+    "group": {
+      "createdAt": "2025-01-25T10:45:00Z",
+      "members": [10, 11, 12],
+      "max_members": 12,
+      "status": "Open",
+      "name": "Palm Heights Project"
+    }
+  },
+  {
+    "_id": "8",
+    "first_name": "Layla",
+    "last_name": "Nabil",
+    "email": "layla@example.com",
+    "role": "Client",
+    "status": "Inactive",
+    "group": {
+      "createdAt": "2024-11-30T09:00:00Z",
+      "members": [],
+      "max_members": 8,
+      "status": "Closed",
+      "name": "Downtown Offices"
+    }
+  },
+  {
+    "_id": "9",
+    "first_name": "Hana",
+    "last_name": "Adel",
+    "email": "hana@example.com",
+    "role": "Client",
+    "status": "Active",
+    "group": {
+      "createdAt": "2025-02-10T15:30:00Z",
+      "members": [13, 14],
+      "max_members": 10,
+      "status": "Open",
+      "name": "Skyline Residences"
+    }
+  },
+  {
+    "_id": "10",
+    "first_name": "Mostafa",
+    "last_name": "Saad",
+    "email": "mostafa@example.com",
+    "role": "Client",
+    "status": "Inactive",
+    "group": {
+      "createdAt": "2024-10-15T11:25:00Z",
+      "members": [],
+      "max_members": 5,
+      "status": "Closed",
+      "name": "Riverside Villas"
+    }
+  }
+]
