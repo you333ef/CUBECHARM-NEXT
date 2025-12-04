@@ -69,39 +69,11 @@ export default function ActivityPage() {
     <div className="min-h-screen bg-background">
       <div className="max-w-2xl mx-auto py-4 px-4 md:px-0">
         {/* 3 */}
-        {/* ✅ تم تعديل min-height للـ Skeleton لتتناسب مع ارتفاع StoriesBar الحقيقي */}
         <div className="min-h-[115px] md:min-h-[135px] my-6">
-          {storiesLoading ? (
-            <div className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm">
-              <div className="flex items-center gap-4 overflow-x-auto px-2 scrollbar-hide">
-                {/* 4 */}
-                <div className="flex flex-col items-center gap-2 flex-shrink-0">
-                  <div className="w-16 h-16 bg-gray-300 rounded-xl ring-4 ring-white shadow-md animate-pulse" />
-                  <div className="h-3 w-14 bg-gray-300 rounded-full animate-pulse" />
-                </div>
-
-                {/* 5*/}
-                {[...Array(8)].map((_, i) => (
-                  <div
-                    key={i}
-                    className="flex flex-col items-center gap-2 flex-shrink-0 animate-pulse"
-                  >
-                    <div className="p-[3px] bg-blue-500 rounded-xl">
-                      <div className="p-[2px] bg-blue-500 rounded-xl">
-                        <div className="bg-gray-300 w-16 h-16 rounded-xl" />
-                      </div>
-                    </div>
-                    <div className="h-3 w-16 bg-gray-300 rounded-full" />
-                  </div>
-                ))}
-              </div>
-            </div>
-          ) : (
-            <>
+        
               <StoriesBar />
               <StoryViewer />
-            </>
-          )}
+      
         </div>
 
         {/*6 */}
