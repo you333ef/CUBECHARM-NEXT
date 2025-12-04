@@ -123,13 +123,13 @@ export default function ActivityPage() {
               </div>
 
               <button onClick={() => setSelectedPost(post.id)} className="w-full block">
-                <div className="relative w-full aspect-square bg-black/5">
+                <div className="relative w-full h-0 pb-[100%] bg-black/5 overflow-hidden">
                   <Image
                     src={post.postImage}
                     alt="Post"
                     fill
                     sizes="(max-width: 768px) 100vw, 600px"
-                    className="object-cover"
+                    className="absolute inset-0 object-cover"
                     priority={post.id === posts[0].id}
                     fetchPriority={post.id === posts[0].id ? "high" : undefined}
                   />
