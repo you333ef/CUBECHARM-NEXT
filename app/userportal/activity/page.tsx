@@ -29,7 +29,6 @@ export default function ActivityPage() {
   const [selectedPost, setSelectedPost] = useState<number | null>(null);
   const [optionsPostId, setOptionsPostId] = useState<number | null>(null);
   const [showAddPostModal, setShowAddPostModal] = useState(false);
-  const [storiesLoading, setStoriesLoading] = useState(true);
 
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -41,12 +40,6 @@ export default function ActivityPage() {
       window.history.replaceState({}, "", window.location.pathname);
     }
   }, [searchParams]);
-
-  //  2
-  useEffect(() => {
-    const timer = setTimeout(() => setStoriesLoading(false), 100);
-    return () => clearTimeout(timer);
-  }, []);
 
   const toggleLike = (id: number) => {
     setLikedPosts((prev) =>
@@ -69,11 +62,8 @@ export default function ActivityPage() {
     <div className="min-h-screen bg-background">
       <div className="max-w-2xl mx-auto py-4 px-4 md:px-0">
         {/* 3 */}
-        <div className="min-h-[115px] md:min-h-[135px] my-6">
-        
-              <StoriesBar />
-              <StoryViewer />
-      
+        <div className="my-6 bg-white border border-gray-200 rounded-xl p-4 shadow-sm">
+          <StoriesBar />
         </div>
 
         {/*6 */}
@@ -178,7 +168,9 @@ export default function ActivityPage() {
         </div>
       </div>
 
-    
+      {/* StoryViewer خارج الـ flow تمامًا */}
+      <StoryViewer />
+
       {selectedPost && selectedPostData && (
         <PostModal
           post={selectedPostData}
