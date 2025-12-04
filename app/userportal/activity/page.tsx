@@ -17,6 +17,7 @@ import {
 } from "react-icons/fa";
 // 1- 
 const PostModal = dynamic(() => import("./componants/PostModal"), { ssr: false });
+const StoryViewer = dynamic(() => import("./componants/StoryViewer"), { ssr: false });
 const StoriesBar = dynamic(() => import("./componants/StoriesBar"), { ssr: false });
 const AddPostModal = dynamic(() => import("./componants/AddPostModal"), { ssr: false });
 const PostOptionsDialog = dynamic(() => import("./componants/PostOptionDialog"), { ssr: false });
@@ -58,132 +59,141 @@ export default function ActivityPage() {
   const selectedPostData = posts.find((p) => p.id === selectedPost);
 
   return (
-    <div className="min-h-screen bg-background">
-      <div className="max-w-2xl mx-auto py-4 px-4 md:px-0">
-        {/* 3 */}
-        <div className="my-6 bg-white border border-gray-200 rounded-xl p-4 shadow-sm">
-          <StoriesBar />
-        </div>
+    <>
+      <style jsx global>{`
+        img {
+          image-rendering: -webkit-optimize-contrast;
+        }
+      `}</style>
 
-        {/*6 */}
-        <div className="mt-6 bg-white border border-gray-200 rounded-xl p-4 shadow-sm">
-          <div className="flex items-center gap-3">
-            <Image
-              src={IMAGE}
-              alt="Your profile"
-              width={44}
-              height={44}
-              priority
-              className="rounded-xl ring-2 ring-gray-100 object-cover h-11 w-11"
-            />
-            <button
-              onClick={openPostModal}
-              className="flex-1 text-right bg-gray-50 hover:bg-gray-100 rounded-full py-3 px-5 text-gray-500 text-sm"
-            >
-              What's on your mind?
-            </button>
-            <button
-              onClick={openPostModal}
-              className="p-3 bg-blue-50 hover:bg-blue-100 rounded-full text-blue-600"
-            >
-              <FaCamera size={20} />
-            </button>
+      <div className="min-h-screen bg-background">
+        <div className="max-w-2xl mx-auto py-4 px-4 md:px-0">
+          {/* 3 */}
+          <div className="my-6 bg-white border border-gray-200 rounded-xl p-4 shadow-sm">
+            <StoriesBar />
           </div>
-        </div>
 
-        {/* 7 */}
-        <div className="mt-8 grid grid-cols-1 gap-6 pb-10 min-h-0">
-          {posts.map((post) => (
-            <article
-              key={post.id}
-              className="bg-card rounded-xl overflow-hidden border border-border shadow-sm"
-            >
-              <div className="flex items-center justify-between p-3">
-                <button
-                  onClick={() => router.push("/account/user-profile")}
-                  className="flex items-center gap-3"
-                >
-                  <Image
-                    src={post.userImage}
-                    alt={post.username}
-                    width={40}
-                    height={40}
-                    priority
-                    className="rounded-xl object-cover h-10 w-10"
-                  />
-                  <div>
-                    <p className="font-semibold text-sm">{post.username}</p>
-                    <p className="text-xs text-muted-foreground">{post.timestamp}</p>
-                  </div>
-                </button>
-                <button onClick={() => setOptionsPostId(post.id)}>
-                  <FaEllipsisH size={22} />
-                </button>
-              </div>
-
-              <button onClick={() => setSelectedPost(post.id)} className="w-full block">
-                <div className="relative w-full h-0 pb-[100%] bg-black/5 overflow-hidden">
-                  <Image
-                    src={post.postImage}
-                    alt="Post"
-                    fill
-                    sizes="(max-width: 768px) 100vw, 600px"
-                    className="absolute inset-0 object-cover"
-                    priority={post.id === posts[0].id}
-                    fetchPriority={post.id === posts[0].id ? "high" : undefined}
-                  />
-                </div>
+          {/*6 */}
+          <div className="mt-6 bg-white border border-gray-200 rounded-xl p-4 shadow-sm">
+            <div className="flex items-center gap-3">
+              <Image
+                src={IMAGE}
+                alt="Your profile"
+                width={44}
+                height={44}
+                priority
+                className="rounded-xl ring-2 ring-gray-100 object-cover h-11 w-11"
+              />
+              <button
+                onClick={openPostModal}
+                className="flex-1 text-right bg-gray-50 hover:bg-gray-100 rounded-full py-3 px-5 text-gray-500 text-sm"
+              >
+                What's on your mind?
               </button>
+              <button
+                onClick={openPostModal}
+                className="p-3 bg-blue-50 hover:bg-blue-100 rounded-full text-blue-600"
+              >
+                <FaCamera size={20} />
+              </button>
+            </div>
+          </div>
 
-              <div className="p-4">
-                <div className="flex justify-between items-center mb-3">
-                  <div className="flex gap-5">
-                    <button onClick={() => toggleLike(post.id)}>
-                      <FaHeart
-                        size={26}
-                        className={likedPosts.includes(post.id) ? "text-red-500 fill-red-500" : ""}
-                      />
-                    </button>
-                    <button onClick={() => setSelectedPost(post.id)}>
-                      <FaRegComment size={26} />
-                    </button>
-                    <button onClick={() => toast("Link copied!")}>
-                      <FaPaperPlane size={24} />
-                    </button>
-                  </div>
-                  <button onClick={() => toast("Saved!")}>
-                    <FaRegBookmark size={26} />
+          {/* 7 */}
+          <div className="mt-8 grid grid-cols-1 gap-6 pb-10 min-h-0">
+            {posts.map((post) => (
+              <article
+                key={post.id}
+                className="bg-card rounded-xl overflow-hidden border border-border shadow-sm"
+              >
+                <div className="flex items-center justify-between p-3">
+                  <button
+                    onClick={() => router.push("/account/user-profile")}
+                    className="flex items-center gap-3"
+                  >
+                    <Image
+                      src={post.userImage}
+                      alt={post.username}
+                      width={40}
+                      height={40}
+                      priority
+                      className="rounded-xl object-cover h-10 w-10"
+                    />
+                    <div>
+                      <p className="font-semibold text-sm">{post.username}</p>
+                      <p className="text-xs text-muted-foreground">{post.timestamp}</p>
+                    </div>
+                  </button>
+                  <button onClick={() => setOptionsPostId(post.id)}>
+                    <FaEllipsisH size={22} />
                   </button>
                 </div>
 
-                <p className="font-bold">{post.likes.toLocaleString()} likes</p>
-                <p className="text-sm mt-2">
-                  <span className="font-semibold mr-2">{post.username}</span>
-                  {post.caption}
-                </p>
-              </div>
-            </article>
-          ))}
+                <button onClick={() => setSelectedPost(post.id)} className="w-full block">
+                  <div className="relative w-full h-0 pb-[100%] bg-black/5 overflow-hidden">
+                    <Image
+                      src={post.postImage}
+                      alt="Post"
+                      fill
+                      sizes="(max-width: 768px) 100vw, 600px"
+                      className="absolute inset-0 object-cover !w-full !h-full"
+                      priority={post.id === posts[0].id}
+                      fetchPriority={post.id === posts[0].id ? "high" : undefined}
+                    />
+                  </div>
+                </button>
+
+                <div className="p-4">
+                  <div className="flex justify-between items-center mb-3">
+                    <div className="flex gap-5">
+                      <button onClick={() => toggleLike(post.id)}>
+                        <FaHeart
+                          size={26}
+                          className={likedPosts.includes(post.id) ? "text-red-500 fill-red-500" : ""}
+                        />
+                      </button>
+                      <button onClick={() => setSelectedPost(post.id)}>
+                        <FaRegComment size={26} />
+                      </button>
+                      <button onClick={() => toast("Link copied!")}>
+                        <FaPaperPlane size={24} />
+                      </button>
+                    </div>
+                    <button onClick={() => toast("Saved!")}>
+                      <FaRegBookmark size={26} />
+                    </button>
+                  </div>
+
+                  <p className="font-bold">{post.likes.toLocaleString()} likes</p>
+                  <p className="text-sm mt-2">
+                    <span className="font-semibold mr-2">{post.username}</span>
+                    {post.caption}
+                  </p>
+                </div>
+              </article>
+            ))}
+          </div>
         </div>
+
+        {/* StoryViewer خارج الـ flow تمامًا */}
+        <StoryViewer />
+
+        {selectedPost && selectedPostData && (
+          <PostModal
+            post={selectedPostData}
+            open={!!selectedPost}
+            onOpenChange={(open: boolean) => !open && setSelectedPost(null)}
+            isLiked={likedPosts.includes(selectedPost)}
+            onLike={() => toggleLike(selectedPost)}
+          />
+        )}
+
+        {optionsPostId && (
+          <PostOptionsDialog open={!!optionsPostId} onClose={() => setOptionsPostId(null)} />
+        )}
+
+        {showAddPostModal && <AddPostModal onClose={() => setShowAddPostModal(false)} />}
       </div>
-
-     
-
-      {selectedPost && selectedPostData && (
-        <PostModal
-          post={selectedPostData}
-          open={!!selectedPost}
-          onOpenChange={(open: boolean) => !open && setSelectedPost(null)}
-          isLiked={likedPosts.includes(selectedPost)}
-          onLike={() => toggleLike(selectedPost)}
-        />
-      )}
-
-      {optionsPostId && (
-        <PostOptionsDialog open={!!optionsPostId} onClose={() => setOptionsPostId(null)} />
-      )}
-
-      {showAddPostModal && <AddPostModal onClose={() => setShowAddPostModal(false)} />}
-    </div>
+    </>
   );
 }
