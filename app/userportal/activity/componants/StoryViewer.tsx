@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback, useRef } from "react";
 import { Swiper, SwiperSlide } from "swiper/react";
 import { Autoplay } from "swiper/modules";
 import "swiper/css";
+import { createPortal } from "react-dom";
 
 import Image from "next/image";
 import { profileData } from "../../../utils/stories";
@@ -38,7 +39,7 @@ export default function StoryViewer() {
     const story = (e as CustomEvent<Story>).detail;
 
     // (6) 
-    let previousCount = 0;
+    let previousCount =  0;
     for (const s of profileData.stories) {
       if (s.id === story.id) break;
       previousCount += s.images.length;
@@ -93,7 +94,7 @@ export default function StoryViewer() {
   const isProfilePage = pathname === "/userportal/profilee";
   // (13) 
 
-  return (
+  return createPortal(
     <div className="fixed inset-0 bg-black z-[99999] flex items-center justify-center">
       <button
         onClick={closeViewer}
@@ -114,10 +115,6 @@ export default function StoryViewer() {
         // (15)
 
         onSwiper={(s) => (swiperRef.current = s)}
-
-        
-    
-
       >
         {/* (16) */}
         {allImages.map((img, i) => (
@@ -131,7 +128,6 @@ export default function StoryViewer() {
                 width={1080}
                 height={1920}
                 className="max-w-full max-h-full object-contain rounded-xl select-none swiper-lazy"
-                // priority
                 priority={i === startIndex}
                 loading={i === startIndex ? "eager" : "lazy"}
               />
@@ -164,6 +160,7 @@ export default function StoryViewer() {
         ))}
       </Swiper>
 
-    </div>
+    </div>,
+    document.body
   );
 }

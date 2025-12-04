@@ -17,7 +17,6 @@ import {
 } from "react-icons/fa";
 // 1- 
 const PostModal = dynamic(() => import("./componants/PostModal"), { ssr: false });
-const StoryViewer = dynamic(() => import("./componants/StoryViewer"), { ssr: false });
 const StoriesBar = dynamic(() => import("./componants/StoriesBar"), { ssr: false });
 const AddPostModal = dynamic(() => import("./componants/AddPostModal"), { ssr: false });
 const PostOptionsDialog = dynamic(() => import("./componants/PostOptionDialog"), { ssr: false });
@@ -168,8 +167,7 @@ export default function ActivityPage() {
         </div>
       </div>
 
-      {/* StoryViewer خارج الـ flow تمامًا */}
-      <StoryViewer />
+     
 
       {selectedPost && selectedPostData && (
         <PostModal
