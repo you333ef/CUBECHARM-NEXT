@@ -15,10 +15,12 @@ import {
   FaEllipsisH,
   FaCamera,
 } from "react-icons/fa";
+import StoryViewer from "./componants/StoryViewer";
+import StoriesBar from "./componants/StoriesBar";
+
 // 1- 
 const PostModal = dynamic(() => import("./componants/PostModal"), { ssr: false });
-const StoryViewer = dynamic(() => import("./componants/StoryViewer"), { ssr: false });
-const StoriesBar = dynamic(() => import("./componants/StoriesBar"), { ssr: false });
+
 const AddPostModal = dynamic(() => import("./componants/AddPostModal"), { ssr: false });
 const PostOptionsDialog = dynamic(() => import("./componants/PostOptionDialog"), { ssr: false });
 
