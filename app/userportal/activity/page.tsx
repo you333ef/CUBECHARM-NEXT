@@ -102,84 +102,83 @@ export default function ActivityPage() {
           </div>
 
           {/* 7 */}
-        <div className="mt-8 grid grid-cols-1 gap-6 pb-10 min-h-0">
-  {posts.map((post) => (
-    <article
-      key={post.id}
-      className="bg-card rounded-xl overflow-hidden border border-border shadow-sm"
-    >
-      <div className="flex items-center justify-between p-3">
-        <button
-          onClick={() => router.push("/account/user-profile")}
-          className="flex items-center gap-3"
-        >
-          <Image
-            src={post.userImage}
-            alt={post.username}
-            width={40}
-            height={40}
-            priority                            
-            className="rounded-xl object-cover h-10 w-10"
-          />
-          <div>
-            <p className="font-semibold text-sm">{post.username}</p>
-            <p className="text-xs text-muted-foreground">{post.timestamp}</p>
+          <div className="mt-8 grid grid-cols-1 gap-6 pb-10 min-h-0">
+            {posts.map((post) => (
+              <article
+                key={post.id}
+                className="bg-card rounded-xl overflow-hidden border border-border shadow-sm"
+              >
+                <div className="flex items-center justify-between p-3">
+                  <button
+                    onClick={() => router.push("/account/user-profile")}
+                    className="flex items-center gap-3"
+                  >
+                    <Image
+                      src={post.userImage}
+                      alt={post.username}
+                      width={40}
+                      height={40}
+                      priority                            
+                      className="rounded-xl object-cover h-10 w-10"
+                    />
+                    <div>
+                      <p className="font-semibold text-sm">{post.username}</p>
+                      <p className="text-xs text-muted-foreground">{post.timestamp}</p>
+                    </div>
+                  </button>
+                  <button onClick={() => setOptionsPostId(post.id)}>
+                    <FaEllipsisH size={22} />
+                  </button>
+                </div>
+
+                <button onClick={() => setSelectedPost(post.id)} className="w-full block">
+                  <div className="w-full aspect-square bg-black/5">
+                    <Image
+                      src={post.postImage}
+                      alt="Post"
+                      width={520}
+                      height={520}
+                      sizes="(max-width: 768px) 100vw, 520px"
+                      className="w-full h-full object-cover"
+                      quality={80}
+                      priority={post.id <= 2}
+                      fetchPriority={post.id <= 2 ? "high" : "auto"}
+                    />
+                  </div>
+                </button>
+
+                <div className="p-4">
+                  <div className="flex justify-between items-center mb-3">
+                    <div className="flex gap-5">
+                      <button onClick={() => toggleLike(post.id)}>
+                        <FaHeart
+                          size={26}
+                          className={likedPosts.includes(post.id) ? "text-red-500 fill-red-500" : ""}
+                        />
+                      </button>
+                      <button onClick={() => setSelectedPost(post.id)}>
+                        <FaRegComment size={26} />
+                      </button>
+                      <button onClick={() => toast("Link copied!")}>
+                        <FaPaperPlane size={24} />
+                      </button>
+                    </div>
+                    <button onClick={() => toast("Saved!")}>
+                      <FaRegBookmark size={26} />
+                    </button>
+                  </div>
+
+                  <p className="font-bold">{post.likes.toLocaleString()} likes</p>
+                  <p className="text-sm mt-2">
+                    <span className="font-semibold mr-2">{post.username}</span>
+                    {post.caption}
+                  </p>
+                </div>
+              </article>
+            ))}
           </div>
-        </button>
-        <button onClick={() => setOptionsPostId(post.id)}>
-          <FaEllipsisH size={22} />
-        </button>
-      </div>
-
-      <button onClick={() => setSelectedPost(post.id)} className="w-full block">
-        <div className="relative w-full h-0 pb-[100%] bg-black/5 overflow-hidden">
-          <Image
-            src={post.postImage}
-            alt="Post"
-            fill
-            sizes="(max-width: 768px) 100vw, 520px"  
-            className="object-cover"
-            quality={75}                             
-            priority={post.id <= 2}                  
-            fetchPriority={post.id <= 2 ? "high" : "auto"}
-          
-          />
-        </div>
-      </button>
-
-      <div className="p-4">
-        <div className="flex justify-between items-center mb-3">
-          <div className="flex gap-5">
-            <button onClick={() => toggleLike(post.id)}>
-              <FaHeart
-                size={26}
-                className={likedPosts.includes(post.id) ? "text-red-500 fill-red-500" : ""}
-              />
-            </button>
-            <button onClick={() => setSelectedPost(post.id)}>
-              <FaRegComment size={26} />
-            </button>
-            <button onClick={() => toast("Link copied!")}>
-              <FaPaperPlane size={24} />
-            </button>
-          </div>
-          <button onClick={() => toast("Saved!")}>
-            <FaRegBookmark size={26} />
-          </button>
         </div>
 
-        <p className="font-bold">{post.likes.toLocaleString()} likes</p>
-        <p className="text-sm mt-2">
-          <span className="font-semibold mr-2">{post.username}</span>
-          {post.caption}
-        </p>
-      </div>
-    </article>
-  ))}
-</div>
-        </div>
-
-      
         <StoryViewer />
 
         {selectedPost && selectedPostData && (
