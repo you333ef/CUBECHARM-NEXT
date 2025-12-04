@@ -93,7 +93,7 @@ export default function ActivityPage() {
         </div>
 
         {/* 7 */}
-        <div className="mt-8 flex flex-col gap-6 pb-10">
+        <div className="mt-8 grid grid-cols-1 gap-6 pb-10 min-h-0">
           {posts.map((post) => (
             <article
               key={post.id}
