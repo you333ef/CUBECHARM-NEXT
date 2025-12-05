@@ -17,12 +17,11 @@ import {
   FaCamera,
 } from "react-icons/fa";
 import StoriesBar from "./componants/StoriesBar";
+import PostOptionDialog from "./componants/PostOptionDialog";
 
 const PostModal = dynamic(() => import("./componants/PostModal"), { ssr: false });
 const AddPostModal = dynamic(() => import("./componants/AddPostModal"), { ssr: false });
-const PostOptionsDialog = dynamic(() => import("./componants/PostOptionDialog"), { ssr: false });
 const StoryViewer = dynamic(() => import("./componants/StoryViewer"), { ssr: false });
-
 const PostCard = memo(({ post, onLike, isLiked, onOpenPost, onOpenOptions, isFirst }: any) => {
   return (
     <article className="bg-card rounded-xl overflow-hidden border border-border shadow-sm">
@@ -216,7 +215,7 @@ export default function ActivityPage() {
         )}
 
         {optionsPostId && (
-          <PostOptionsDialog
+          <PostOptionDialog
             open={!!optionsPostId}
             onClose={() => setOptionsPostId(null)}
           />
