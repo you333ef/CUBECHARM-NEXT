@@ -24,7 +24,6 @@ const AddPostModal = dynamic(() => import("./componants/AddPostModal"), { ssr: f
 const PostOptionsDialog = dynamic(() => import("./componants/PostOptionDialog"), { ssr: false });
 const StoryViewer = dynamic(() => import("./componants/StoryViewer"), { ssr: false });
 
-// ✅ FIX 1: PostCard مع تحسينات الصور
 const PostCard = memo(({ post, onLike, isLiked, onOpenPost, onOpenOptions, isFirst }: any) => {
   return (
     <article className="bg-card rounded-xl overflow-hidden border border-border shadow-sm">
@@ -198,7 +197,7 @@ export default function ActivityPage() {
               <PostCard
                 key={post.id}
                 post={post}
-                isFirst={index === 0} // ✅ أول بوست بس
+                isFirst={index === 0} 
                 isLiked={likedPosts.includes(post.id)}
                 onLike={toggleLike}
                 onOpenPost={(target: any) => {
@@ -211,7 +210,7 @@ export default function ActivityPage() {
         </div>
 
         {/* StoryViewer */}
-        {isStoryOpen && <StoryViewer />}
+    <StoryViewer />
 
         {/* Modals */}
         {selectedPost && selectedPostData && (
