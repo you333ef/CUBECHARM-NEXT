@@ -18,7 +18,6 @@ import {
 } from "react-icons/fa";
 import StoriesBar from "./componants/StoriesBar";
 
-// Dynamic imports
 const PostModal = dynamic(() => import("./componants/PostModal"), { ssr: false });
 const AddPostModal = dynamic(() => import("./componants/AddPostModal"), { ssr: false });
 const PostOptionsDialog = dynamic(() => import("./componants/PostOptionDialog"), { ssr: false });
@@ -54,26 +53,22 @@ const PostCard = memo(({ post, onLike, isLiked, onOpenPost, onOpenOptions, isFir
         </button>
       </div>
 
-      {/* ✅ FIX 2: Post Image - LCP optimization */}
       <button onClick={() => onOpenPost(post.id)} className="w-full block" aria-label="View post">
         <div className="relative w-full aspect-square bg-black/5">
-          <Image
+         <Image
             src={post.postImage}
             alt={post.caption.slice(0, 50) || "Post image"}
-            fill
-            // ✅ تحسين الـ sizes عشان الصور تنزل بالحجم الصح
+            width={472}
+            height={472}
             sizes="(max-width: 640px) 100vw, (max-width: 768px) 520px, 472px"
-            className="object-cover"
+            className="object-cover w-full h-auto"
             placeholder="blur"
-            blurDataURL="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII="
-            // ✅ أول صورة priority و مش lazy
+            blurDataURL="..."
             priority={isFirst}
             loading={isFirst ? undefined : "lazy"}
-            // ✅ fetchpriority للـ LCP
-            {...(isFirst && { fetchPriority: "high" as const })}
-            // ✅ جودة أقل شوية عشان الحجم
             quality={85}
-          />
+                />
+
         </div>
       </button>
 
@@ -131,7 +126,6 @@ export default function ActivityPage() {
     }
   }, [searchParams]);
 
-  // ✅ FIX 3: استخدم useCallback عشان الفانكشنز متتعملش كل مرة
   const toggleLike = useMemo(
     () => (id: number) => {
       setLikedPosts(prev =>
