@@ -18,14 +18,14 @@ import {
 } from "react-icons/fa";
 import StoriesBar from "./componants/StoriesBar";
 
-// Dynamic imports (مش هيتحمّلوا غير لما تحتاجهم)
+// Dynamic imports
 const PostModal = dynamic(() => import("./componants/PostModal"), { ssr: false });
 const AddPostModal = dynamic(() => import("./componants/AddPostModal"), { ssr: false });
 const PostOptionsDialog = dynamic(() => import("./componants/PostOptionDialog"), { ssr: false });
 const StoryViewer = dynamic(() => import("./componants/StoryViewer"), { ssr: false });
 
-// كومبوننت البوست منفصل وميمو عشان ميترندرش كل شوية
-const PostCard = memo(({ post, onLike, isLiked, onOpenPost, onOpenOptions }: any) => {
+// ✅ FIX 1: PostCard مع تحسينات الصور
+const PostCard = memo(({ post, onLike, isLiked, onOpenPost, onOpenOptions, isFirst }: any) => {
   return (
     <article className="bg-card rounded-xl overflow-hidden border border-border shadow-sm">
       {/* Header */}
@@ -55,18 +55,25 @@ const PostCard = memo(({ post, onLike, isLiked, onOpenPost, onOpenOptions }: any
         </button>
       </div>
 
-      {/* Post Image - أهم تحسين */}
+      {/* ✅ FIX 2: Post Image - LCP optimization */}
       <button onClick={() => onOpenPost(post.id)} className="w-full block" aria-label="View post">
         <div className="relative w-full aspect-square bg-black/5">
           <Image
             src={post.postImage}
             alt={post.caption.slice(0, 50) || "Post image"}
             fill
-            sizes="(max-width: 768px) 100vw, 520px"
+            // ✅ تحسين الـ sizes عشان الصور تنزل بالحجم الصح
+            sizes="(max-width: 640px) 100vw, (max-width: 768px) 520px, 472px"
             className="object-cover"
             placeholder="blur"
             blurDataURL="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII="
-            loading="lazy"
+            // ✅ أول صورة priority و مش lazy
+            priority={isFirst}
+            loading={isFirst ? undefined : "lazy"}
+            // ✅ fetchpriority للـ LCP
+            {...(isFirst && { fetchPriority: "high" as const })}
+            // ✅ جودة أقل شوية عشان الحجم
+            quality={85}
           />
         </div>
       </button>
@@ -110,13 +117,12 @@ export default function ActivityPage() {
   const [selectedPost, setSelectedPost] = useState<number | null>(null);
   const [optionsPostId, setOptionsPostId] = useState<number | null>(null);
   const [showAddPostModal, setShowAddPostModal] = useState(false);
-  const [isStoryOpen, setIsStoryOpen] = useState(false); // جديد عشان الـ StoryViewer
+  const [isStoryOpen, setIsStoryOpen] = useState(false);
 
   const router = useRouter();
   const searchParams = useSearchParams();
   const { role } = useContext(AuthContext)!;
 
-  // ميمو عشان الـ posts متتغيرش كل ريندر
   const posts = useMemo(() => postsData, []);
 
   useEffect(() => {
@@ -126,20 +132,27 @@ export default function ActivityPage() {
     }
   }, [searchParams]);
 
-  const toggleLike = (id: number) => {
-    setLikedPosts(prev =>
-      prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
-    );
-  };
+  // ✅ FIX 3: استخدم useCallback عشان الفانكشنز متتعملش كل مرة
+  const toggleLike = useMemo(
+    () => (id: number) => {
+      setLikedPosts(prev =>
+        prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
+      );
+    },
+    []
+  );
 
-  const openPostModal = () => {
-    if (!role) {
-      toast("Login first bro");
-      router.push("/providers/UnAuthorized");
-    } else {
-      setShowAddPostModal(true);
-    }
-  };
+  const openPostModal = useMemo(
+    () => () => {
+      if (!role) {
+        toast("Login first bro");
+        router.push("/providers/UnAuthorized");
+      } else {
+        setShowAddPostModal(true);
+      }
+    },
+    [role, router]
+  );
 
   const selectedPostData = posts.find(p => p.id === selectedPost);
 
@@ -179,12 +192,13 @@ export default function ActivityPage() {
             </div>
           </div>
 
-          {/* Posts List - كل حاجة اتحسنت هنا */}
+          {/* ✅ FIX 4: Posts List - أول بوست priority */}
           <div className="mt-8 space-y-6 pb-10">
-            {posts.map((post) => (
+            {posts.map((post, index) => (
               <PostCard
                 key={post.id}
                 post={post}
+                isFirst={index === 0} // ✅ أول بوست بس
                 isLiked={likedPosts.includes(post.id)}
                 onLike={toggleLike}
                 onOpenPost={(target: any) => {
@@ -196,8 +210,8 @@ export default function ActivityPage() {
           </div>
         </div>
 
-        {/* StoryViewer بس لما نفتحه */}
-        {isStoryOpen && <StoryViewer  />}
+        {/* StoryViewer */}
+        {isStoryOpen && <StoryViewer />}
 
         {/* Modals */}
         {selectedPost && selectedPostData && (
