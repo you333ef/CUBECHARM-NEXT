@@ -22,23 +22,17 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" >
+    <html lang="en">
       <head>
-          <link rel="preload" href="/_next/static/css/app/globals.css"as="style"/>
+        {/* Preconnect للـ fonts بس */}
         <link rel="preconnect" href="https://fonts.bunny.net" />
-        <link rel="preconnect" href="https://cubecharm-5v49scd59-yousef1.vercel.app" />
-          
-
-       
       </head>
       <body className="antialiased">
         <Toaster
           position="top-center"
           richColors
           closeButton
-          toastOptions={{
-            duration: 4000,
-          }}
+          toastOptions={{ duration: 4000 }}
         />
         <AuthProvider>
           <LayoutWrapper>{children}</LayoutWrapper>
