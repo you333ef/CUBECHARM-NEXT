@@ -24,10 +24,11 @@ export default function RootLayout({
   return (
     <html lang="en" >
       <head>
-        
+          <link rel="preload" href="/_next/static/css/app/globals.css"as="style"/>
         <link rel="preconnect" href="https://fonts.bunny.net" />
         <link rel="preconnect" href="https://cubecharm-5v49scd59-yousef1.vercel.app" />
-        
+          
+
        
       </head>
       <body className="antialiased">
