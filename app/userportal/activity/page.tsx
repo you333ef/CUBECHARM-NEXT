@@ -133,17 +133,19 @@ export default function ActivityPage() {
 
                 <button onClick={() => setSelectedPost(post.id)} className="w-full block">
                   <div className="w-full aspect-square bg-black/5">
-                    <Image
+   <Image
   src={post.postImage}
   alt="Post"
   width={520}
   height={520}
   quality={80}
-  priority={post.id <= 2}
-  fetchPriority={post.id <= 2 ? "high" : "auto"}
+  priority={true} 
+  fetchPriority="high"
   placeholder="blur"
-  blurDataURL="/path/to/blur.png"
+    blurDataURL={post.postImage + '?w=10&blur=10'}
+  className="w-full h-full object-cover"
 />
+
 
                   </div>
                 </button>
