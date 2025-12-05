@@ -54,22 +54,20 @@ const PostCard = memo(({ post, onLike, isLiked, onOpenPost, onOpenOptions, isFir
       </div>
 
       <button onClick={() => onOpenPost(post.id)} className="w-full block" aria-label="View post">
-        <div className="relative w-full aspect-square bg-black/5">
-         <Image
-            src={post.postImage}
-            alt={post.caption.slice(0, 50) || "Post image"}
-            width={472}
-            height={472}
-            sizes="(max-width: 640px) 100vw, (max-width: 768px) 520px, 472px"
-            className="object-cover w-full h-auto"
-            placeholder="blur"
-            blurDataURL="..."
-            priority={isFirst}
-            loading={isFirst ? undefined : "lazy"}
-            quality={85}
-                />
-
-        </div>
+        <div className="relative w-full aspect-square bg-black/5 overflow-hidden rounded-lg">
+  <Image
+    src={post.postImage}
+    alt={post.caption.slice(0, 50) || "Post image"}
+    width={500}      
+    height={500}    
+    className="object-cover w-full h-full"
+    sizes="(max-width: 640px) 90vw, (max-width: 1024px) 45vw, 30vw"
+    placeholder="blur"
+    blurDataURL="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mN8/Oh7PQAJJAKn7Q5M5wAAAABJRU5ErkJggg=="
+    quality={75}
+    priority={isFirst}
+  />
+</div>
       </button>
 
       {/* Actions & Caption */}
