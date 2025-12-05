@@ -94,6 +94,8 @@ export default function ActivityPage() {
               </button>
               <button
                 onClick={openPostModal}
+                    aria-label="CamerA"
+
                 className="p-3 bg-blue-50 hover:bg-blue-100 rounded-full text-blue-600"
               >
                 <FaCamera size={20} />
@@ -126,7 +128,7 @@ export default function ActivityPage() {
                       <p className="text-xs text-muted-foreground">{post.timestamp}</p>
                     </div>
                   </button>
-                  <button onClick={() => setOptionsPostId(post.id)}>
+                  <button aria-label="OPTIONS" onClick={() => setOptionsPostId(post.id)}>
                     <FaEllipsisH size={22} />
                   </button>
                 </div>
@@ -153,22 +155,38 @@ export default function ActivityPage() {
                 <div className="p-4">
                   <div className="flex justify-between items-center mb-3">
                     <div className="flex gap-5">
-                      <button onClick={() => toggleLike(post.id)}>
-                        <FaHeart
-                          size={26}
-                          className={likedPosts.includes(post.id) ? "text-red-500 fill-red-500" : ""}
-                        />
-                      </button>
-                      <button onClick={() => setSelectedPost(post.id)}>
-                        <FaRegComment size={26} />
-                      </button>
-                      <button onClick={() => toast("Link copied!")}>
-                        <FaPaperPlane size={24} />
-                      </button>
+                     <button onClick={() => toggleLike(post.id)}>
+  <FaHeart
+    size={26}
+    className={likedPosts.includes(post.id) ? "text-red-500 fill-red-500" : ""}
+  />
+  <span className="sr-only">
+    {likedPosts.includes(post.id) ? "Unlike post" : "Like post"}
+  </span>
+</button>
+
+                       <button
+    onClick={() => setSelectedPost(post.id)}
+    aria-label="Comment on post"
+  >
+    <FaRegComment size={26} />
+  </button>
+
+                       <button
+    onClick={() => toast("Link copied!")}
+    aria-label="Share post"
+  >
+    <FaPaperPlane size={24} />
+  </button>
+
                     </div>
-                    <button onClick={() => toast("Saved!")}>
-                      <FaRegBookmark size={26} />
-                    </button>
+  <button
+    onClick={() => toast("Saved!")}
+    aria-label="Save post"
+  >
+    <FaRegBookmark size={26} />
+  </button>
+
                   </div>
 
                   <p className="font-bold">{post.likes.toLocaleString()} likes</p>
