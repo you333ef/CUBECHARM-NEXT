@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import MediaGallery from "../Componants/MediaGalleryServer";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
+import PropertyCard from "../Componants/PropertyCardAds";
 
 // 1- Mock properties data
 const properties = [
@@ -14,92 +15,6 @@ const properties = [
   { id: 2, image: "https://cdn.dubaiimmobilier.fr/wp-content/uploads/2024/06/Sky-High-Luxury.webp", title: "Cozy Studio", location: "Giza", price: "35,000 EGP" },
   { id: 3, image: "https://cdn.dubaiimmobilier.fr/wp-content/uploads/2024/06/Sky-High-Luxury.webp", title: "Luxury Villa", location: "Alexandria", price: "120,000 EGP" },
 ];
-
-// 2- PropertyCard component with memoization for performance
-const PropertyCard = memo(({ id, image, title, location, price, size = "150", description = "Brand New Fully Furnished 1BR ...", isFavorite, onClick }: any) => {
-  const [currentImageIndex, setCurrentImageIndex] = useState(0);
-  const navigate =useRouter()
-  const images = [image, image];
-
-  const handlePrevImage = useCallback((e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setCurrentImageIndex((prev) => (prev === 0 ? images.length - 1 : prev - 1));
-  }, [images.length]);
-
-  const handleNextImage = useCallback((e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setCurrentImageIndex((prev) => (prev === images.length - 1 ? 0 : prev + 1));
-  }, [images.length]);
-
-  return (
-    <div
-      onClick={() => navigate.push(`/property/${id}`)}
-      className="bg-white rounded-xl shadow-sm hover:shadow-lg transition-all duration-300 overflow-hidden max-w-md border border-gray-100 cursor-pointer"
-    >
-      {/* 3- Card header with user info */}
-      <div className="p-3 pb-2 flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center text-white font-semibold">Y</div>
-          <div className="flex flex-col">
-            <span className="text-sm font-semibold text-gray-800">Yousef Khaled</span>
-            <span className="text-xs text-gray-500">Front End Developer</span>
-          </div>
-        </div>
-        <button onClick={(e) => e.stopPropagation()} className="p-2 hover:bg-gray-100 rounded-full transition-colors">
-          <MoreVertical className="text-gray-600" size={18} />
-        </button>
-      </div>
-
-      {/* 4- Image carousel */}
-      <div className="relative group">
-        <img src={images[currentImageIndex]} alt={title} className="w-full h-64 object-cover" loading="lazy" />
-        <button onClick={handlePrevImage} className="absolute left-2 top-1/2 -translate-y-1/2 bg-white/90 hover:bg-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity shadow-md">
-          <ChevronLeft size={24} className="text-gray-800" />
-        </button>
-        <button onClick={handleNextImage} className="absolute right-2 top-1/2 -translate-y-1/2 bg-white/90 hover:bg-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity shadow-md">
-          <ChevronRight size={24} className="text-gray-800" />
-        </button>
-      </div>
-
-      {/* 5- Card details */}
-      <div className="p-3">
-        <p className="text-sm text-gray-700 line-clamp-2 leading-relaxed mb-2">{description}</p>
-        <div className="flex justify-between items-start mb-2">
-          <h3 className="text-blue-600 font-bold text-lg hover:text-blue-700 transition-colors">{title}</h3>
-          <button onClick={(e) => { e.stopPropagation(); onClick(); }} className="p-1 hover:scale-110 transition-transform">
-            {isFavorite ? <Heart className="text-red-500" size={24} /> : <Heart className="text-gray-400" size={24} />}
-          </button>
-        </div>
-        <p className="text-gray-900 text-lg font-semibold mb-2">{price}</p>
-        <div className="flex items-center justify-between mb-2">
-          <div className="flex items-center gap-1">
-            <MapPin className="text-gray-600" size={14} />
-            <span className="text-gray-600 text-sm">{location}</span>
-          </div>
-          <div className="flex items-center gap-1">
-            <Star className="text-yellow-400" size={18} />
-            <span className="text-sm font-semibold">4.8</span>
-          </div>
-        </div>
-        <div className="flex items-center justify-between text-xs text-gray-500">
-          <div className="flex items-center gap-3">
-            <span>Apartment</span>
-            <span>{size} m²</span>
-          </div>
-          <div className="flex items-center gap-1">
-            <Eye size={14} />
-            <span>4.2K</span>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-});
-
-PropertyCard.displayName = "PropertyCard";
-
 // 6- Action icons component
 const ActionIcons = memo(({ isFavorite, onToggleFavorite, onChat, onDetails }: { isFavorite: boolean; onToggleFavorite: () => void; onChat: () => void; onDetails: () => void }) => (
   <div className="grid grid-cols-6 gap-2 py-4 px-2 bg-gray-50 rounded-2xl border border-gray-200">
@@ -260,7 +175,7 @@ const Property = () => {
               <h2 className="mt-8 text-xl font-semibold mb-4 text-gray-800">Related Ads</h2>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
                 {properties.map((property) => (
-                  <PropertyCard key={property.id} {...property} isFavorite={false} onClick={() => console.log("Favorite:", property.id)} />
+                  <PropertyCard key={property.id} {...property} isFavorite={false}  />
                 ))}
               </div>
             </div>
