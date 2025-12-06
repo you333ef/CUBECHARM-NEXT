@@ -23,7 +23,7 @@ export default function LayoutWrapper({ children }: { children: React.ReactNode 
   return (
     <>
       {!hideNavbar && <TopNavbar />}
-      <main className="pt-10 pb-24 px-4">
+      <main className="pt-5 pb-5 px-4">
         <div className="container mx-auto max-w-6xl">{children}</div>
       </main>
       {!hideNavbar && <BottomNavbar/>}

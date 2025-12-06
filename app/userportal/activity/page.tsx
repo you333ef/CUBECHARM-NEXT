@@ -18,14 +18,14 @@ import {
 } from "react-icons/fa";
 import StoriesBar from "./componants/StoriesBar";
 import PostOptionDialog from "./componants/PostOptionDialog";
-
+//  1
 const PostModal = dynamic(() => import("./componants/PostModal"), { ssr: false });
 const AddPostModal = dynamic(() => import("./componants/AddPostModal"), { ssr: false });
 const StoryViewer = dynamic(() => import("./componants/StoryViewer"), { ssr: false });
 const PostCard = memo(({ post, onLike, isLiked, onOpenPost, onOpenOptions, isFirst }: any) => {
   return (
     <article className="bg-card rounded-xl overflow-hidden border border-border shadow-sm">
-      {/* Header */}
+      {/* 2 */}
       <div className="flex items-center justify-between p-3">
         <button
           onClick={() => onOpenPost("/account/user-profile")}
@@ -69,7 +69,7 @@ const PostCard = memo(({ post, onLike, isLiked, onOpenPost, onOpenOptions, isFir
 </div>
       </button>
 
-      {/* Actions & Caption */}
+      {/*3 */}
       <div className="p-4">
         <div className="flex justify-between items-center mb-3">
           <div className="flex gap-5">
@@ -102,7 +102,7 @@ const PostCard = memo(({ post, onLike, isLiked, onOpenPost, onOpenOptions, isFir
 });
 
 PostCard.displayName = "PostCard";
-
+// 4
 export default function ActivityPage() {
   const [likedPosts, setLikedPosts] = useState<number[]>([]);
   const [selectedPost, setSelectedPost] = useState<number | null>(null);
@@ -150,12 +150,12 @@ export default function ActivityPage() {
     <>
       <div className="min-h-screen bg-background">
         <div className="max-w-2xl mx-auto py-4 px-4 md:px-0">
-          {/* Stories Bar */}
+        
           <div className="my-6 bg-white border border-gray-200 rounded-xl p-4 shadow-sm">
             <StoriesBar />
           </div>
-
-          {/* Add Post Bar */}
+{/* 5 */}
+         
           <div className="mt-6 bg-white border border-gray-200 rounded-xl p-4 shadow-sm">
             <div className="flex items-center gap-3">
               <Image
@@ -181,8 +181,8 @@ export default function ActivityPage() {
               </button>
             </div>
           </div>
-
-          {/* ✅ FIX 4: Posts List - أول بوست priority */}
+{/* 6 */}
+       
           <div className="mt-8 space-y-6 pb-10">
             {posts.map((post, index) => (
               <PostCard
@@ -200,10 +200,10 @@ export default function ActivityPage() {
           </div>
         </div>
 
-        {/* StoryViewer */}
+       
     <StoryViewer />
-
-        {/* Modals */}
+{/* 7 */}
+        
         {selectedPost && selectedPostData && (
           <PostModal
             post={selectedPostData}

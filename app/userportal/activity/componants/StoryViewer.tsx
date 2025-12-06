@@ -131,15 +131,15 @@ export default function StoryViewer() {
                 width={1080}
                 height={1920}
                 className="max-w-full max-h-full object-contain rounded-xl select-none swiper-lazy"
-                // priority
+              
                 priority={i === startIndex}
                 loading={i === startIndex ? "eager" : "lazy"}
               />
 
-              {/* loader for swiper lazy */}
+           
               <div className="swiper-lazy-preloader"></div>
 
-              {/* (18)  */}
+           
               <div className="absolute top-4 left-4 right-4 flex gap-1">
                 {allImages.map((_, idx) => (
                   <div key={idx} className="flex-1 h-1 bg-white/30 rounded-full overflow-hidden">

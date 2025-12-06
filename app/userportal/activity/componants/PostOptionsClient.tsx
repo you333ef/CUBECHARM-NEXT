@@ -27,7 +27,6 @@ const PostOptionsDialog: React.FC<PostOptionsDialogProps> = ({ open, onClose, po
 
    const handleAction = (action: string) => {
 
-    // not authorized
     if (!role) {
       onClose?.();
       toast.error('Register first to access this feature');

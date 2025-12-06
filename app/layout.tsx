@@ -24,7 +24,6 @@ export default function RootLayout({
   return (
     <html lang="en">
       <head>
-        {/* Preconnect للـ fonts بس */}
         <link rel="preconnect" href="https://fonts.bunny.net" />
       </head>
       <body className="antialiased">
@@ -35,7 +34,7 @@ export default function RootLayout({
           toastOptions={{ duration: 4000 }}
         />
         <AuthProvider>
-          <LayoutWrapper>{children}</LayoutWrapper>
+         {children}
         </AuthProvider>
       </body>
     </html>
