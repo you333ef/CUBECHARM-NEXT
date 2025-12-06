@@ -4,19 +4,18 @@ const nextConfig: NextConfig = {
   reactStrictMode: true,
   compress: true,
 
-  experimental: {
-    optimizeCss: true,
+  images: {
+    formats: ["image/avif", "image/webp"],       
+    remotePatterns: [
+      { protocol: "https", hostname: "cdn.dubaiimmobilier.fr" },
+      { protocol: "https", hostname: "images.unsplash.com" },
+      { protocol: "https", hostname: "i.pravatar.cc" },
+      { protocol: "https", hostname: "cf.bstatic.com" },
+    ],
   },
 
-  productionBrowserSourceMaps: false,
-
-  images: {
-    domains: [
-      "cdn.dubaiimmobilier.fr",
-      "images.unsplash.com",
-      "i.pravatar.cc",
-       "cf.bstatic.com",
-    ],
+  experimental: {
+    optimizePackageImports: ["lucide-react"],   
   },
 };
 
