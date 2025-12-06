@@ -7,6 +7,7 @@
 "use client";
 import { useState, Suspense, lazy, useCallback, memo, ComponentType } from "react";
 import { mediaItems } from "../../../utils/mediaItems";
+import Image from "next/image";
 
 // 2. Type for 360 viewer props
 interface PhotoSphereProps {
@@ -59,83 +60,99 @@ const MediaGallery = memo(() => {
 
   return (
     <div className="w-full media-gallery">
-      {/* 9. 360 Viewer - lazy loaded */}
-      {selectedMedia.is360 && !selectedMedia.isVideo ? (
-        <Suspense fallback={<MediaGallerySkeleton />}>
-          <div className="viewer-360 rounded-lg overflow-hidden">
-            <ReactPhotoSphereViewer
-              src={selectedMedia.src}
-              width="100%"
-              height="100%"
-            />
-          </div>
-        </Suspense>
-      ) : !selectedMedia.isVideo ? (
-        // 10. Image container - CSS-based responsive sizing
-        <div className="main-image-container relative mx-auto w-full max-w-[900px] overflow-hidden rounded-2xl">
-          <img
-            src={selectedMedia.src}
-            alt={selectedMedia.alt || "Property"}
-            className="w-full h-full object-cover"
-            loading={selectedMedia.id === mediaItems[0].id ? "eager" : "lazy"}
+    {/* 9. 360 Viewer - lazy loaded */}
+{selectedMedia.is360 && !selectedMedia.isVideo ? (
+  <Suspense fallback={<MediaGallerySkeleton />}>
+    <div className="viewer-360 rounded-lg overflow-hidden relative">
+      {/* Placeholder صغير أثناء التحميل */}
+      <div className="absolute inset-0 bg-gray-200 animate-pulse z-0"></div>
+      
+      <ReactPhotoSphereViewer
+        src={selectedMedia.src}
+        width="100%"
+        height="100%"
+       
+      />
+    </div>
+  </Suspense>
+) : !selectedMedia.isVideo ? (
+  // 10. Image container - CSS-based responsive sizing
+  <div className="main-image-container relative mx-auto w-full max-w-[900px] overflow-hidden rounded-2xl">
+    <Image
+      src={selectedMedia.src}
+      alt={selectedMedia.alt || "Property"}
+      fill
+      sizes="(max-width: 768px) 100vw, 50vw"
+      priority={selectedMedia.id === mediaItems[0].id} // فقط أول صورة priority
+      placeholder="blur"
+      blurDataURL="data:image/jpeg;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAAB..."
+      className="object-cover"
+    />
+  </div>
+) : null}
+
+
+{/* 11. Video iframe */}
+{selectedMedia.isVideo && (
+  <div className="w-full aspect-video relative">
+    {/* Placeholder صغير قبل تحميل الفيديو */}
+    <div className="absolute inset-0 bg-gray-200 animate-pulse rounded-lg"></div>
+
+    <iframe
+      width="100%"
+      height="100%"
+      src={selectedMedia.src}
+      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+      allowFullScreen
+      title="Property Video"
+      loading="lazy" // lazy للـ iframe لتأخير التحميل
+      className="rounded-lg relative z-10"
+    />
+  </div>
+)}
+
+
+     {/* 12. Thumbnail navigation strip */}
+<div className="w-full overflow-x-auto scrollbar-hide">
+  <div className="flex gap-3 mt-4 pb-2 justify-center w-max mx-auto px-4">
+    {mediaItems.map((item, index) => (
+      <div key={item.id} className="flex-shrink-0 contain-layout contain-paint">
+        {item.isVideo ? (
+          <video
+            poster={item.thumbnail} // thumbnail بدل تحميل الفيديو الكامل
+            onClick={() => handleThumbnailClick(item)}
+            muted
+            playsInline
+            preload="none" // يمنع تحميل الفيديو إلا عند الضغط
+            aria-label={`Video thumbnail ${index + 1}`}
+            className={`h-16 w-24 sm:h-20 sm:w-28 md:h-24 md:w-32 object-cover rounded-lg cursor-pointer border-2 transition-all duration-200 hover:scale-105 hover:shadow-lg ${
+              selectedMedia.id === item.id
+                ? "border-primary ring-2 ring-primary/30"
+                : "border-transparent hover:border-primary/50"
+            }`}
+          />
+        ) : (
+          <Image
+            src={item.thumbnail}
+            alt={item.alt || `Thumbnail ${index + 1}`}
+            onClick={() => handleThumbnailClick(item)}
+            className={`h-16 w-24 sm:h-20 sm:w-28 md:h-24 md:w-32 object-cover rounded-lg cursor-pointer border-2 transition-all duration-200 hover:scale-105 hover:shadow-lg ${
+              selectedMedia.id === item.id
+                ? "border-primary ring-2 ring-primary/30"
+                : "border-transparent hover:border-primary/50"
+            }`}
+            loading={selectedMedia.id === item.id ? "eager" : "lazy"} // eager لأول صورة
             decoding="async"
+            priority={selectedMedia.id === item.id} // أول صورة فقط
+            placeholder="blur"
+            blurDataURL="data:image/jpeg;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAAB..." // ضع blur صغير جدًا
           />
-        </div>
-      ) : null}
-
-      {/* 11. Video iframe */}
-      {selectedMedia.isVideo && (
-        <div className="w-full aspect-video">
-          <iframe
-            width="100%"
-            height="100%"
-            src={selectedMedia.src}
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-            allowFullScreen
-            title="Property Video"
-            loading="lazy"
-            className="rounded-lg"
-          />
-        </div>
-      )}
-
-      {/* 12. Thumbnail navigation strip */}
-      <div className="w-full overflow-x-auto scrollbar-hide">
-        <div className="flex gap-3 mt-4 pb-2 justify-center w-max mx-auto px-4">
-          {mediaItems.map((item, index) => (
-            <div key={item.id} className="flex-shrink-0 contain-layout contain-paint">
-              {item.isVideo ? (
-                <video
-                  src={item.thumbnail}
-                  onClick={() => handleThumbnailClick(item)}
-                  muted
-                  playsInline
-                  preload="none"
-                  aria-label={`Video thumbnail ${index + 1}`}
-                  className={`h-16 w-24 sm:h-20 sm:w-28 md:h-24 md:w-32 object-cover rounded-lg cursor-pointer border-2 transition-all duration-200 hover:scale-105 hover:shadow-lg ${
-                    selectedMedia.id === item.id
-                      ? "border-primary ring-2 ring-primary/30"
-                      : "border-transparent hover:border-primary/50"
-                  }`}
-                />
-              ) : (
-                <img
-                  src={item.thumbnail}
-                  alt={item.alt || `Thumbnail ${index + 1}`}
-                  onClick={() => handleThumbnailClick(item)}
-                  className={`h-16 w-24 sm:h-20 sm:w-28 md:h-24 md:w-32 object-cover rounded-lg cursor-pointer border-2 transition-all duration-200 hover:scale-105 hover:shadow-lg ${
-                    selectedMedia.id === item.id
-                      ? "border-primary ring-2 ring-primary/30"
-                      : "border-transparent hover:border-primary/50"
-                  }`}
-                  loading="lazy"
-                  decoding="async"
-                />
-              )}
-            </div>
-          ))}
-        </div>
+        )}
       </div>
+    ))}
+  </div>
+</div>
+
     </div>
   );
 });
