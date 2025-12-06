@@ -24,7 +24,7 @@ const ReactPhotoSphereViewer = lazy(() =>
     // 4. Fallback if library not installed
     default: ({ src }: PhotoSphereProps) => (
       <div className="w-full h-full flex items-center justify-center bg-muted rounded-lg">
-        <img src={src} alt="360 View" className="w-full h-full object-cover rounded-lg" />
+        <Image src={src} alt="360 View" className="w-full h-full object-cover rounded-lg" />
       </div>
     )
   }))
@@ -64,7 +64,7 @@ const MediaGallery = memo(() => {
 {selectedMedia.is360 && !selectedMedia.isVideo ? (
   <Suspense fallback={<MediaGallerySkeleton />}>
     <div className="viewer-360 rounded-lg overflow-hidden relative">
-      {/* Placeholder صغير أثناء التحميل */}
+      
       <div className="absolute inset-0 bg-gray-200 animate-pulse z-0"></div>
       
       <ReactPhotoSphereViewer
@@ -83,10 +83,16 @@ const MediaGallery = memo(() => {
     src={selectedMedia.src}
     alt={selectedMedia.alt || "Property"}
     fill
+      sizes="
+    (max-width: 768px) 100vw,
+    (max-width: 1200px) 80vw,
+    900px
+  "
+ placeholder="blur"
+            blurDataURL="/blur.png"
     className="object-cover"
     priority={selectedMedia.id === mediaItems[0].id}
-    placeholder="blur"
-    blurDataURL="data:image/jpeg;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAAB..."
+    
   />
 </div>
 
@@ -97,7 +103,7 @@ const MediaGallery = memo(() => {
 {/* 11. Video iframe */}
 {selectedMedia.isVideo && (
   <div className="w-full aspect-video relative">
-    {/* Placeholder صغير قبل تحميل الفيديو */}
+    
     <div className="absolute inset-0 bg-gray-200 animate-pulse rounded-lg"></div>
 
     <iframe
@@ -107,7 +113,7 @@ const MediaGallery = memo(() => {
       allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
       allowFullScreen
       title="Property Video"
-      loading="lazy" // lazy للـ iframe لتأخير التحميل
+      loading="lazy" 
       className="rounded-lg relative z-10"
     />
   </div>
@@ -151,13 +157,14 @@ const MediaGallery = memo(() => {
                 ? "border-primary ring-2 ring-primary/30"
                 : "border-transparent hover:border-primary/50"
             }`}
-            width={150}
-            height={100}
+            width={96}
+            height={64}
             loading={selectedMedia.id === item.id ? "eager" : "lazy"}
             decoding="async"
             priority={selectedMedia.id === item.id}
-            placeholder="blur"
-            blurDataURL="data:image/jpeg;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAAB..."
+             placeholder="blur"
+            blurDataURL="/blur.png"
+
           />
         )}
       </div>
