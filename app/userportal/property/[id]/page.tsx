@@ -150,7 +150,7 @@ const SellerProfile = memo(() => (
       loading="lazy"
     />
     <div className="flex-1">
-      <Link href="/user-profile" className="text-lg font-semibold text-blue-600 hover:underline">Yassine</Link>
+      <Link href="/userportal/profilee" className="text-lg font-semibold text-blue-600 hover:underline">Yassine</Link>
       <div className="flex items-center gap-1 mt-1">
         <IoMdStar className="text-yellow-400" size={16} />
         <span className="text-sm font-semibold">4.8</span>
@@ -196,7 +196,7 @@ const Property = () => {
 
   // 11- Navigation handlers
   const toChat = useCallback(() => navigate.push("/messages"), [navigate]);
-  const toDetails = useCallback(() => navigate.push(`/pro-mode/${id}`), [navigate, id]);
+  const toDetails = useCallback(() => navigate.push(`/userportal/readmore/${id}`), [navigate, id]);
 
   // 12- Simulate initial data load
   useEffect(() => {
@@ -233,7 +233,7 @@ const Property = () => {
                 <Link href={`/pro-mode/${id}`} className="flex-1 text-center py-3 px-6 bg-white text-blue-600 font-bold rounded-lg text-base border-2 border-blue-600 hover:bg-blue-50 transition-colors">
                   PRO MODE
                 </Link>
-                <Link href="/payment" className="flex-1 text-center py-3 px-6 bg-green-500 text-white font-bold rounded-lg text-base hover:bg-green-600 transition-colors">
+                <Link href="/userportal/payment" className="flex-1 text-center py-3 px-6 bg-green-500 text-white font-bold rounded-lg text-base hover:bg-green-600 transition-colors">
                   Pay Now
                 </Link>
               </div>
