@@ -1,5 +1,5 @@
 'use client';
-import { Phone, MapPin, Share2, Heart, MessageCircle, Info, Flag, Star, Eye, ChevronLeft, ChevronRight, MoreVertical } from "lucide-react";
+import { Phone, MapPin, Share2, Heart, MessageCircle, Info, Flag, Star,   MoreVertical } from "lucide-react";
 
 import React, { useState, useEffect, useCallback, memo } from "react";
 

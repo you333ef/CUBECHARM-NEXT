@@ -1,4 +1,3 @@
-// src/components/property/PropertyCard.tsx
 import React, { memo, useMemo, useState, useCallback } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
@@ -39,7 +38,6 @@ const PropertyCard = memo(
     const router = useRouter();
     const [currentImageIndex, setCurrentImageIndex] = useState(0);
 
-    // الحل الأول: useMemo عشان الـ array ما يتخلقش كل render
     const images = useMemo(() => [image, image], [image]);
 
     const handlePrev = useCallback((e: React.MouseEvent) => {

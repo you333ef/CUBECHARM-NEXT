@@ -86,10 +86,11 @@ const MediaGallery = memo(() => {
       fill
       sizes="(max-width: 768px) 100vw, (max-width: 1200px) 80vw, 900px"
       className="object-cover rounded-2xl"
-      priority={selectedMedia.id === mediaItems[0].id}
+     
       loading="eager"
       placeholder="blur"
       blurDataURL="/blur.png"
+      fetchPriority="high"
     />
   </div>
 </div>
