@@ -24,7 +24,10 @@ export default function RootLayout({
   return (
     <html lang="en">
       <head>
-        <link rel="preconnect" href="https://fonts.bunny.net" />
+         <link rel="preconnect" href="https://fonts.bunny.net" />
+  <link rel="preconnect" href="https://cdn.dubaiimmobilier.fr" crossOrigin="" />
+  <link rel="dns-prefetch" href="https://cdn.dubaiimmobilier.fr" />
+  <link rel="preconnect" href="https://images.unsplash.com" crossOrigin="" />
       </head>
       <body className="antialiased">
         <Toaster
