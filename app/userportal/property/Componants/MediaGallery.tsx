@@ -77,26 +77,22 @@ const MediaGallery = memo(() => {
   </Suspense>
 ) : !selectedMedia.isVideo ? (
   // 10. Image container - CSS-based responsive sizing
-  <div className="main-image-container relative mx-auto w-full max-w-[900px] overflow-hidden rounded-2xl">
-  <div className="main-image-container relative mx-auto w-full max-w-[900px] overflow-hidden rounded-2xl aspect-[16/9]">
-  <Image
-    src={selectedMedia.src}
-    alt={selectedMedia.alt || "Property"}
-    fill
-      sizes="
-    (max-width: 768px) 100vw,
-    (max-width: 1200px) 80vw,900px"
-        placeholder="blur"
-        blurDataURL="/blur.png"
-        className="object-cover"
-       
-        loading="eager"  
-            priority      
-    
-  />
-</div>
-
+<div className="relative w-full max-w-[900px] mx-auto overflow-hidden rounded-2xl bg-gray-100">
+  {/* Padding-bottom hack for perfect 16:9 ratio without layout shifts */}
+  <div className="relative pb-[56.25%]">
+    <Image
+      src={selectedMedia.src}
+      alt={selectedMedia.alt || "Property"}
+      fill
+      sizes="(max-width: 768px) 100vw, (max-width: 1200px) 80vw, 900px"
+      className="object-cover rounded-2xl"
+      priority={selectedMedia.id === mediaItems[0].id}
+      loading="eager"
+      placeholder="blur"
+      blurDataURL="/blur.png"
+    />
   </div>
+</div>
 ) : null}
 
 

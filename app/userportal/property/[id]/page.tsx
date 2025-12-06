@@ -222,7 +222,7 @@ const Property = () => {
 
               {/* 18- CTA buttons */}
               <div className="flex flex-col sm:flex-row gap-3 mt-4">
-                <Link href={`/pro-mode/${id}`} className="flex-1 text-center py-3 px-6 bg-white text-blue-600 font-bold rounded-lg text-base border-2 border-blue-600 hover:bg-blue-50 transition-colors">
+                <Link href={`/userportal/proModewep/${id}`} className="flex-1 text-center py-3 px-6 bg-white text-blue-600 font-bold rounded-lg text-base border-2 border-blue-600 hover:bg-blue-50 transition-colors">
                   PRO MODE
                 </Link>
                 <Link href="/userportal/payment" className="flex-1 text-center py-3 px-6 bg-green-500 text-white font-bold rounded-lg text-base hover:bg-green-600 transition-colors">
