@@ -205,7 +205,7 @@ const Property = () => {
   }, []);
 
   return (
-    <div className="w-full bg-gray-50"  style={{ maxWidth: "1100px" }}>
+    <div className="w-full bg-gray-50" >
       {/* 13- Main full-width content container */}
       <div className="w-full px-4 sm:px-6 lg:px-8 py-6 md:py-8 pt-16 md:pt-20">
         <div className="bg-white rounded-xl p-4 sm:p-6">
@@ -254,7 +254,7 @@ const Property = () => {
                 <h2 className="text-xl font-semibold mb-3 text-gray-800">Description</h2>
                 <p className="text-gray-700 leading-relaxed">
                   Brand New Fully Furnished 1BR apartment with modern amenities and stunning city views. Perfect for professionals seeking comfort and convenience...
-                  <Link href={`/readmore/${id}`} className="text-blue-600 font-semibold hover:underline ml-1">Read More</Link>
+                  <Link href={`/userportal/readmore/${id}`} className="text-blue-600 font-semibold hover:underline ml-1">Read More</Link>
                 </p>
               </div>
 
