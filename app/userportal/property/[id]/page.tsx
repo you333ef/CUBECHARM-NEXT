@@ -1,80 +1,5 @@
 'use client';
-import dynamic from "next/dynamic";
-
-export const FiPhone = dynamic(
-  () => import("react-icons/fi").then((mod) => mod.FiPhone),
-  { ssr: false }
-);
-
-export const GrLocation = dynamic(
-  () => import("react-icons/gr").then((mod) => mod.GrLocation),
-  { ssr: false }
-);
-
-export const IoShareSocialOutline = dynamic(
-  () => import("react-icons/io5").then((mod) => mod.IoShareSocialOutline),
-  { ssr: false }
-);
-
-export const FaRegHeart = dynamic(
-  () => import("react-icons/fa6").then((mod) => mod.FaRegHeart),
-  { ssr: false }
-);
-
-export const FaHeart = dynamic(
-  () => import("react-icons/fa6").then((mod) => mod.FaHeart),
-  { ssr: false }
-);
-
-export const AiOutlineMessage = dynamic(
-  () => import("react-icons/ai").then((mod) => mod.AiOutlineMessage),
-  { ssr: false }
-);
-
-export const AiOutlineInfoCircle = dynamic(
-  () => import("react-icons/ai").then((mod) => mod.AiOutlineInfoCircle),
-  { ssr: false }
-);
-
-export const FaFontAwesomeFlag = dynamic(
-  () => import("react-icons/fa").then((mod) => mod.FaFontAwesomeFlag),
-  { ssr: false }
-);
-
-export const IoMdStar = dynamic(
-  () => import("react-icons/io").then((mod) => mod.IoMdStar),
-  { ssr: false }
-);
-
-export const IoMdHeartEmpty = dynamic(
-  () => import("react-icons/io").then((mod) => mod.IoMdHeartEmpty),
-  { ssr: false }
-);
-
-export const IoMdHeart = dynamic(
-  () => import("react-icons/io").then((mod) => mod.IoMdHeart),
-  { ssr: false }
-);
-
-export const BsThreeDotsVertical = dynamic(
-  () => import("react-icons/bs").then((mod) => mod.BsThreeDotsVertical),
-  { ssr: false }
-);
-
-export const MdChevronLeft = dynamic(
-  () => import("react-icons/md").then((mod) => mod.MdChevronLeft),
-  { ssr: false }
-);
-
-export const MdChevronRight = dynamic(
-  () => import("react-icons/md").then((mod) => mod.MdChevronRight),
-  { ssr: false }
-);
-
-export const IoEyeOutline = dynamic(
-  () => import("react-icons/io5").then((mod) => mod.IoEyeOutline),
-  { ssr: false }
-);
+import { Phone, MapPin, Share2, Heart, MessageCircle, Info, Flag, Star, Eye, ChevronLeft, ChevronRight, MoreVertical } from "lucide-react";
 
 import React, { useState, useEffect, useCallback, memo } from "react";
 
@@ -123,7 +48,7 @@ const PropertyCard = memo(({ id, image, title, location, price, size = "150", de
           </div>
         </div>
         <button onClick={(e) => e.stopPropagation()} className="p-2 hover:bg-gray-100 rounded-full transition-colors">
-          <BsThreeDotsVertical className="text-gray-600" size={18} />
+          <MoreVertical className="text-gray-600" size={18} />
         </button>
       </div>
 
@@ -131,10 +56,10 @@ const PropertyCard = memo(({ id, image, title, location, price, size = "150", de
       <div className="relative group">
         <img src={images[currentImageIndex]} alt={title} className="w-full h-64 object-cover" loading="lazy" />
         <button onClick={handlePrevImage} className="absolute left-2 top-1/2 -translate-y-1/2 bg-white/90 hover:bg-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity shadow-md">
-          <MdChevronLeft size={24} className="text-gray-800" />
+          <ChevronLeft size={24} className="text-gray-800" />
         </button>
         <button onClick={handleNextImage} className="absolute right-2 top-1/2 -translate-y-1/2 bg-white/90 hover:bg-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity shadow-md">
-          <MdChevronRight size={24} className="text-gray-800" />
+          <ChevronRight size={24} className="text-gray-800" />
         </button>
       </div>
 
@@ -144,17 +69,17 @@ const PropertyCard = memo(({ id, image, title, location, price, size = "150", de
         <div className="flex justify-between items-start mb-2">
           <h3 className="text-blue-600 font-bold text-lg hover:text-blue-700 transition-colors">{title}</h3>
           <button onClick={(e) => { e.stopPropagation(); onClick(); }} className="p-1 hover:scale-110 transition-transform">
-            {isFavorite ? <IoMdHeart className="text-red-500" size={24} /> : <IoMdHeartEmpty className="text-gray-400" size={24} />}
+            {isFavorite ? <Heart className="text-red-500" size={24} /> : <Heart className="text-gray-400" size={24} />}
           </button>
         </div>
         <p className="text-gray-900 text-lg font-semibold mb-2">{price}</p>
         <div className="flex items-center justify-between mb-2">
           <div className="flex items-center gap-1">
-            <GrLocation className="text-gray-600" size={14} />
+            <MapPin className="text-gray-600" size={14} />
             <span className="text-gray-600 text-sm">{location}</span>
           </div>
           <div className="flex items-center gap-1">
-            <IoMdStar className="text-yellow-400" size={18} />
+            <Star className="text-yellow-400" size={18} />
             <span className="text-sm font-semibold">4.8</span>
           </div>
         </div>
@@ -164,7 +89,7 @@ const PropertyCard = memo(({ id, image, title, location, price, size = "150", de
             <span>{size} m²</span>
           </div>
           <div className="flex items-center gap-1">
-            <IoEyeOutline size={14} />
+            <Eye size={14} />
             <span>4.2K</span>
           </div>
         </div>
@@ -179,27 +104,27 @@ PropertyCard.displayName = "PropertyCard";
 const ActionIcons = memo(({ isFavorite, onToggleFavorite, onChat, onDetails }: { isFavorite: boolean; onToggleFavorite: () => void; onChat: () => void; onDetails: () => void }) => (
   <div className="grid grid-cols-6 gap-2 py-4 px-2 bg-gray-50 rounded-2xl border border-gray-200">
     <button className="group flex flex-col items-center gap-2 p-3 hover:bg-white rounded-xl transition-all duration-200 hover:shadow-md">
-      <GrLocation className="w-6 h-6 text-blue-600 group-hover:scale-110 transition-transform" />
+      <MapPin className="w-6 h-6 text-blue-600 group-hover:scale-110 transition-transform" />
       
     </button>
     <button className="group flex flex-col items-center gap-2 p-3 hover:bg-white rounded-xl transition-all duration-200 hover:shadow-md">
-      <IoShareSocialOutline className="w-6 h-6 text-blue-600 group-hover:scale-110 transition-transform" />
+      <Share2 className="w-6 h-6 text-blue-600 group-hover:scale-110 transition-transform" />
       
     </button>
     <button onClick={onToggleFavorite} className="group flex flex-col items-center gap-2 p-3 hover:bg-white rounded-xl transition-all duration-200 hover:shadow-md">
-      {isFavorite ? <FaHeart className="w-6 h-6 text-red-600 group-hover:scale-110 transition-transform" /> : <FaRegHeart className="w-6 h-6 text-blue-600 group-hover:scale-110 transition-transform" />}
+      {isFavorite ? <Heart className="w-6 h-6 text-red-600 group-hover:scale-110 transition-transform" /> : <Heart className="w-6 h-6 text-blue-600 group-hover:scale-110 transition-transform" />}
     
     </button>
     <button onClick={onChat} className="group flex flex-col items-center gap-2 p-3 hover:bg-white rounded-xl transition-all duration-200 hover:shadow-md">
-      <AiOutlineMessage className="w-6 h-6 text-blue-600 group-hover:scale-110 transition-transform" />
+      <MessageCircle className="w-6 h-6 text-blue-600 group-hover:scale-110 transition-transform" />
     
     </button>
     <button className="group flex flex-col items-center gap-2 p-3 hover:bg-white rounded-xl transition-all duration-200 hover:shadow-md">
-      <FiPhone className="w-6 h-6 text-blue-600 group-hover:scale-110 transition-transform" />
+      <Phone className="w-6 h-6 text-blue-600 group-hover:scale-110 transition-transform" />
      
     </button>
     <button onClick={onDetails} className="group flex flex-col items-center gap-2 p-3 hover:bg-white rounded-xl transition-all duration-200 hover:shadow-md">
-      <AiOutlineInfoCircle className="w-6 h-6 text-blue-600 group-hover:scale-110 transition-transform" />
+      <Info className="w-6 h-6 text-blue-600 group-hover:scale-110 transition-transform" />
      
     </button>
   </div>
@@ -219,7 +144,7 @@ const SellerProfile = memo(() => (
     <div className="flex-1">
       <Link href="/userportal/profilee" className="text-lg font-semibold text-blue-600 hover:underline">Yassine</Link>
       <div className="flex items-center gap-1 mt-1">
-        <IoMdStar className="text-yellow-400" size={16} />
+        <Star className="text-yellow-400" size={16} />
         <span className="text-sm font-semibold">4.8</span>
         <span className="text-xs text-gray-500">(120 Reviews)</span>
       </div>
@@ -327,7 +252,7 @@ const Property = () => {
 
               {/* 21- Report button */}
               <button className="flex items-center justify-center gap-2 w-full py-3 mt-6 rounded-lg bg-gray-100 hover:bg-gray-200 transition-colors">
-                <FaFontAwesomeFlag className="text-red-600" size={18} />
+                <Flag className="text-red-600" size={18} />
                 <span className="text-red-600 font-semibold">Report this Ad</span>
               </button>
 
