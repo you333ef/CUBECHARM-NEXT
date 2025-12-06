@@ -85,13 +85,13 @@ const MediaGallery = memo(() => {
     fill
       sizes="
     (max-width: 768px) 100vw,
-    (max-width: 1200px) 80vw,
-    900px
-  "
- placeholder="blur"
-            blurDataURL="/blur.png"
-    className="object-cover"
-    priority={selectedMedia.id === mediaItems[0].id}
+    (max-width: 1200px) 80vw,900px"
+        placeholder="blur"
+        blurDataURL="/blur.png"
+        className="object-cover"
+       
+        loading="eager"  
+            priority      
     
   />
 </div>
@@ -159,9 +159,11 @@ const MediaGallery = memo(() => {
             }`}
             width={96}
             height={64}
-            loading={selectedMedia.id === item.id ? "eager" : "lazy"}
+              loading={item.id === mediaItems[0].id ? "eager" : "lazy"}  
+
             decoding="async"
-            priority={selectedMedia.id === item.id}
+              priority={item.id === mediaItems[0].id}                  
+
              placeholder="blur"
             blurDataURL="/blur.png"
 
