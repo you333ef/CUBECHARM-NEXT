@@ -1,14 +1,81 @@
 'use client';
-import { FiPhone } from "react-icons/fi";
-import { GrLocation } from "react-icons/gr";
-import { IoShareSocialOutline } from "react-icons/io5";
-import { FaRegHeart, FaHeart } from "react-icons/fa6";
-import { AiOutlineMessage, AiOutlineInfoCircle } from "react-icons/ai";
-import { FaFontAwesomeFlag } from "react-icons/fa";
-import { IoMdStar, IoMdHeartEmpty, IoMdHeart } from "react-icons/io";
-import { BsThreeDotsVertical } from "react-icons/bs";
-import { MdChevronLeft, MdChevronRight } from "react-icons/md";
-import { IoEyeOutline } from "react-icons/io5";
+import dynamic from "next/dynamic";
+
+export const FiPhone = dynamic(
+  () => import("react-icons/fi").then((mod) => mod.FiPhone),
+  { ssr: false }
+);
+
+export const GrLocation = dynamic(
+  () => import("react-icons/gr").then((mod) => mod.GrLocation),
+  { ssr: false }
+);
+
+export const IoShareSocialOutline = dynamic(
+  () => import("react-icons/io5").then((mod) => mod.IoShareSocialOutline),
+  { ssr: false }
+);
+
+export const FaRegHeart = dynamic(
+  () => import("react-icons/fa6").then((mod) => mod.FaRegHeart),
+  { ssr: false }
+);
+
+export const FaHeart = dynamic(
+  () => import("react-icons/fa6").then((mod) => mod.FaHeart),
+  { ssr: false }
+);
+
+export const AiOutlineMessage = dynamic(
+  () => import("react-icons/ai").then((mod) => mod.AiOutlineMessage),
+  { ssr: false }
+);
+
+export const AiOutlineInfoCircle = dynamic(
+  () => import("react-icons/ai").then((mod) => mod.AiOutlineInfoCircle),
+  { ssr: false }
+);
+
+export const FaFontAwesomeFlag = dynamic(
+  () => import("react-icons/fa").then((mod) => mod.FaFontAwesomeFlag),
+  { ssr: false }
+);
+
+export const IoMdStar = dynamic(
+  () => import("react-icons/io").then((mod) => mod.IoMdStar),
+  { ssr: false }
+);
+
+export const IoMdHeartEmpty = dynamic(
+  () => import("react-icons/io").then((mod) => mod.IoMdHeartEmpty),
+  { ssr: false }
+);
+
+export const IoMdHeart = dynamic(
+  () => import("react-icons/io").then((mod) => mod.IoMdHeart),
+  { ssr: false }
+);
+
+export const BsThreeDotsVertical = dynamic(
+  () => import("react-icons/bs").then((mod) => mod.BsThreeDotsVertical),
+  { ssr: false }
+);
+
+export const MdChevronLeft = dynamic(
+  () => import("react-icons/md").then((mod) => mod.MdChevronLeft),
+  { ssr: false }
+);
+
+export const MdChevronRight = dynamic(
+  () => import("react-icons/md").then((mod) => mod.MdChevronRight),
+  { ssr: false }
+);
+
+export const IoEyeOutline = dynamic(
+  () => import("react-icons/io5").then((mod) => mod.IoEyeOutline),
+  { ssr: false }
+);
+
 import React, { useState, useEffect, useCallback, memo } from "react";
 
 import { toast } from "sonner";
@@ -200,7 +267,7 @@ const Property = () => {
 
   // 12- Simulate initial data load
   useEffect(() => {
-    const timer = setTimeout(() => setLoading(false), 500);
+    const timer = setTimeout(() => setLoading(false), 100);
     return () => clearTimeout(timer);
   }, []);
 
