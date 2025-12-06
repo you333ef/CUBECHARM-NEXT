@@ -78,16 +78,18 @@ const MediaGallery = memo(() => {
 ) : !selectedMedia.isVideo ? (
   // 10. Image container - CSS-based responsive sizing
   <div className="main-image-container relative mx-auto w-full max-w-[900px] overflow-hidden rounded-2xl">
-    <Image
-      src={selectedMedia.src}
-      alt={selectedMedia.alt || "Property"}
-      fill
-      sizes="(max-width: 768px) 100vw, 50vw"
-      priority={selectedMedia.id === mediaItems[0].id} // فقط أول صورة priority
-      placeholder="blur"
-      blurDataURL="data:image/jpeg;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAAB..."
-      className="object-cover"
-    />
+  <div className="main-image-container relative mx-auto w-full max-w-[900px] overflow-hidden rounded-2xl aspect-[16/9]">
+  <Image
+    src={selectedMedia.src}
+    alt={selectedMedia.alt || "Property"}
+    fill
+    className="object-cover"
+    priority={selectedMedia.id === mediaItems[0].id}
+    placeholder="blur"
+    blurDataURL="data:image/jpeg;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAAB..."
+  />
+</div>
+
   </div>
 ) : null}
 
@@ -112,25 +114,33 @@ const MediaGallery = memo(() => {
 )}
 
 
-     {/* 12. Thumbnail navigation strip */}
+   {/* 12. Thumbnail navigation strip */}
 <div className="w-full overflow-x-auto scrollbar-hide">
   <div className="flex gap-3 mt-4 pb-2 justify-center w-max mx-auto px-4">
     {mediaItems.map((item, index) => (
       <div key={item.id} className="flex-shrink-0 contain-layout contain-paint">
         {item.isVideo ? (
-          <video
-            poster={item.thumbnail} // thumbnail بدل تحميل الفيديو الكامل
+          <div
             onClick={() => handleThumbnailClick(item)}
-            muted
-            playsInline
-            preload="none" // يمنع تحميل الفيديو إلا عند الضغط
-            aria-label={`Video thumbnail ${index + 1}`}
-            className={`h-16 w-24 sm:h-20 sm:w-28 md:h-24 md:w-32 object-cover rounded-lg cursor-pointer border-2 transition-all duration-200 hover:scale-105 hover:shadow-lg ${
+            className={`relative h-16 w-24 sm:h-20 sm:w-28 md:h-24 md:w-32 cursor-pointer rounded-lg overflow-hidden border-2 transition-all duration-200 hover:scale-105 hover:shadow-lg ${
               selectedMedia.id === item.id
                 ? "border-primary ring-2 ring-primary/30"
                 : "border-transparent hover:border-primary/50"
             }`}
-          />
+          >
+            <Image
+              src={item.thumbnail}
+              alt={`Video thumbnail ${index + 1}`}
+              fill
+              className="object-cover"
+            />
+
+            <div className="absolute inset-0 flex items-center justify-center">
+              <svg className="w-6 h-6 text-white opacity-90" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M8 5v14l11-7z" />
+              </svg>
+            </div>
+          </div>
         ) : (
           <Image
             src={item.thumbnail}
@@ -141,17 +151,20 @@ const MediaGallery = memo(() => {
                 ? "border-primary ring-2 ring-primary/30"
                 : "border-transparent hover:border-primary/50"
             }`}
-            loading={selectedMedia.id === item.id ? "eager" : "lazy"} // eager لأول صورة
+            width={150}
+            height={100}
+            loading={selectedMedia.id === item.id ? "eager" : "lazy"}
             decoding="async"
-            priority={selectedMedia.id === item.id} // أول صورة فقط
+            priority={selectedMedia.id === item.id}
             placeholder="blur"
-            blurDataURL="data:image/jpeg;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAAB..." // ضع blur صغير جدًا
+            blurDataURL="data:image/jpeg;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAAB..."
           />
         )}
       </div>
     ))}
   </div>
 </div>
+
 
     </div>
   );

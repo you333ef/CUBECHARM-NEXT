@@ -15,6 +15,7 @@ const nextConfig: NextConfig = {
       "cdn.dubaiimmobilier.fr",
       "images.unsplash.com",
       "i.pravatar.cc",
+       "cf.bstatic.com",
     ],
   },
 };

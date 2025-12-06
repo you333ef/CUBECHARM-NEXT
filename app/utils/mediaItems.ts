@@ -30,7 +30,7 @@ export const mediaItems = [
   
   {
     src: "/videos/video1.mp4",
-    thumbnail: "/videos/video1.mp4",
+    thumbnail: "/videos/Screenshot 2025-12-06 160749.png",
     isVideo: true,
     is360: false,
     id: 4,
@@ -40,7 +40,7 @@ export const mediaItems = [
    
   {
     src: "/videos/video2.mp4",
-    thumbnail: "/videos/video2.mp4",
+    thumbnail: "/videos/Screenshot 2025-12-06 160726.png",
     isVideo: true,
     is360: false,
     id: 5,
@@ -48,7 +48,7 @@ export const mediaItems = [
   },
   {
     src: "/videos/video3.mp4",
-    thumbnail: "/videos/video3.mp4",
+    thumbnail: "/videos/Screenshot 2025-12-06 160809.png",
     isVideo: true,
     is360: false,
     id: 6,
