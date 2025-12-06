@@ -217,7 +217,7 @@ const Property = () => {
 
               {/* 15- Media gallery */}
               <div className="mb-4">
-                <MediaGallery />
+                {/* <MediaGallery /> */}
               </div>
 
               {/* 16- Action icons */}
