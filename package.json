@@ -9,6 +9,7 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@photo-sphere-viewer/core": "^5.14.0",
     "@stripe/react-stripe-js": "^5.4.1",
     "@stripe/stripe-js": "^8.5.3",
     "framer-motion": "^12.23.24",

@@ -4,22 +4,10 @@ import { useState, Suspense, memo, useCallback, useMemo, lazy } from "react";
 import Image from "next/image";
 import dynamic from "next/dynamic";
 import type { StaticImageData } from "next/image";
+import PhotoSphereViewer from "../../componants/shared/PhotoSphereViewer";
 
 // 1. Lightweight 360 viewer - only loads when needed
-const ReactPhotoSphereViewer = dynamic(
-  () => import("react-photo-sphere-viewer").then((mod) => mod.ReactPhotoSphereViewer),
-  {
-    ssr: false,
-    loading: () => (
-      <div className="h-[600px] w-full bg-gray-200/80 animate-pulse rounded-xl flex items-center justify-center">
-        <div className="text-center">
-          <div className="w-16 h-16 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-gray-700 font-medium">Loading 360°...</p>
-        </div>
-      </div>
-    ),
-  }
-);
+
 
 // 2. Cell data structure
 interface CellData {
@@ -137,10 +125,10 @@ const PRO_MODE = () => {
               {selectedCell ? (
                 selectedCell.is360 ? (
                   // 12. 360 viewer loads only when needed
-                  <ReactPhotoSphereViewer
+                  <PhotoSphereViewer
                     src={typeof selectedCell.imageUrl === "string" ? selectedCell.imageUrl : selectedCell.imageUrl.src}
-                    height="600px"
-                    width="100%"
+                    
+                    
                   />
                 ) : (
                   // 13. Normal image - auto WebP/AVIF + optimized by Next.js
