@@ -31,7 +31,7 @@ export const postsData: Post[] = [
         id: 1,
         username: "jane_smith",
         userImage: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150&h=150&fit=crop",
-        text: "Absolutely stunning! 😍",
+        text: "Absolutely stunning! ",
         timestamp: "1 hour ago"
       },
       {

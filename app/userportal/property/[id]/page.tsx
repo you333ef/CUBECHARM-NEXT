@@ -9,13 +9,13 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import PropertyCard from "../Componants/PropertyCardAds";
 
-// 1- Mock properties data
+// 1-
 const properties = [
   { id: 1, image: "https://cdn.dubaiimmobilier.fr/wp-content/uploads/2024/06/Sky-High-Luxury.webp", title: "Modern Apartment", location: "Cairo", price: "45,000 EGP" },
   { id: 2, image: "https://cdn.dubaiimmobilier.fr/wp-content/uploads/2024/06/Sky-High-Luxury.webp", title: "Cozy Studio", location: "Giza", price: "35,000 EGP" },
   { id: 3, image: "https://cdn.dubaiimmobilier.fr/wp-content/uploads/2024/06/Sky-High-Luxury.webp", title: "Luxury Villa", location: "Alexandria", price: "120,000 EGP" },
 ];
-// 6- Action icons component
+// 2-
 const ActionIcons = memo(({ isFavorite, onToggleFavorite, onChat, onDetails }: { isFavorite: boolean; onToggleFavorite: () => void; onChat: () => void; onDetails: () => void }) => (
   <div className="grid grid-cols-6 gap-2 py-4 px-2 bg-gray-50 rounded-2xl border border-gray-200">
     <button className="group flex flex-col items-center gap-2 p-3 hover:bg-white rounded-xl transition-all duration-200 hover:shadow-md">
@@ -47,7 +47,7 @@ const ActionIcons = memo(({ isFavorite, onToggleFavorite, onChat, onDetails }: {
 
 ActionIcons.displayName = "ActionIcons";
 
-// 7- Seller profile component
+//3-
 const SellerProfile = memo(() => (
   <div className="flex items-center gap-4 p-4 bg-gray-50 rounded-xl border border-gray-200">
     <img
@@ -70,7 +70,7 @@ const SellerProfile = memo(() => (
 
 SellerProfile.displayName = "SellerProfile";
 
-// 8- Loading skeleton component
+// 4
 const LoadingSkeleton = () => (
   <div className="space-y-5 animate-pulse">
     <div className="h-10 bg-gray-200 rounded w-3/4"></div>
@@ -83,14 +83,14 @@ const LoadingSkeleton = () => (
   </div>
 );
 
-// 9- Main Property component
+// 5
 const Property = () => {
   const [loading, setLoading] = useState(true);
   const [isFavorite, setIsFavorite] = useState(false);
   const { id } = useParams<{ id: string }>();
   const navigate = useRouter();
 
-  // 10- Toggle favorite handler with toast
+  // 6-
   const toggleFavorite = useCallback(() => {
     setIsFavorite((prev) => {
       toast.success(!prev ? "Added to Favourites" : "Removed from Favourites", {
@@ -101,11 +101,11 @@ const Property = () => {
     });
   }, []);
 
-  // 11- Navigation handlers
+  // 7
   const toChat = useCallback(() => navigate.push("/messages"), [navigate]);
   const toDetails = useCallback(() => navigate.push(`/userportal/readmore/${id}`), [navigate, id]);
 
-  // 12- Simulate initial data load
+  // 8
   useEffect(() => {
     const timer = setTimeout(() => setLoading(false), 100);
     return () => clearTimeout(timer);
@@ -113,7 +113,7 @@ const Property = () => {
 
   return (
     <div className="w-full bg-gray-50" >
-      {/* 13- Main full-width content container */}
+      {/* 9 */}
       <div className="w-full px-4 sm:px-6 lg:px-8 py-6 md:py-8 pt-16 md:pt-20">
         <div className="bg-white rounded-xl p-4 sm:p-6">
           {loading ? (
@@ -122,20 +122,20 @@ const Property = () => {
             <div>
            
 
-              {/* 15- Media gallery */}
+              {/* 10 */}
               <div className="mb-4">
                 <MediaGallery />
               </div>
 
-              {/* 16- Action icons */}
+              {/* 11 */}
               <ActionIcons isFavorite={isFavorite} onToggleFavorite={toggleFavorite} onChat={toChat} onDetails={toDetails} />
 
-              {/* 17- Seller profile */}
+              {/* 12 */}
               <div className="mt-4">
                 <SellerProfile />
               </div>
 
-              {/* 18- CTA buttons */}
+              {/* 13 */}
               <div className="flex flex-col sm:flex-row gap-3 mt-4">
                 <Link href={`/userportal/proModewep/${id}`} className="flex-1 text-center py-3 px-6 bg-white text-blue-600 font-bold rounded-lg text-base border-2 border-blue-600 hover:bg-blue-50 transition-colors">
                   PRO MODE
@@ -145,7 +145,7 @@ const Property = () => {
                 </Link>
               </div>
 
-              {/* 19- Property characteristics */}
+              {/* 14 */}
               <div className="mt-6 text-center sm:text-left">
                 <h2 className="text-xl font-semibold mb-3 text-gray-800">Characteristics</h2>
                 <ul className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-gray-700">
@@ -156,7 +156,7 @@ const Property = () => {
                 </ul>
               </div>
 
-              {/* 20- Property description */}
+              {/* 15- */}
               <div className="mt-6 text-center sm:text-left">
                 <h2 className="text-xl font-semibold mb-3 text-gray-800">Description</h2>
                 <p className="text-gray-700 leading-relaxed">
@@ -165,13 +165,13 @@ const Property = () => {
                 </p>
               </div>
 
-              {/* 21- Report button */}
+              {/* 16- */}
               <button className="flex items-center justify-center gap-2 w-full py-3 mt-6 rounded-lg bg-gray-100 hover:bg-gray-200 transition-colors">
                 <Flag className="text-red-600" size={18} />
                 <span className="text-red-600 font-semibold">Report this Ad</span>
               </button>
 
-              {/* 22- Related ads section */}
+              {/* 17-  */}
               <h2 className="mt-8 text-xl font-semibold mb-4 text-gray-800">Related Ads</h2>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
                 {properties.map((property) => (

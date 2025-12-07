@@ -1,29 +1,24 @@
-// ============================================================
 // 1. Media Gallery Component
-// ============================================================
-// A performant media gallery supporting images, videos, and 360°.
-// Uses CSS-based responsive sizing to avoid reflow/repaint issues.
-// ============================================================
+
 "use client";
 import { useState, useCallback, memo } from "react";
 import { mediaItems } from "../../../utils/mediaItems";
 import Image from "next/image";
 import dynamic from "next/dynamic";
 
-// 2. Type for 360 viewer props
+// 2. 
 interface PhotoSphereProps {
   src: string;
   width: string;
   height: string;
 }
 
-// 3. الحل السحري بدون أي error في TypeScript
 const ReactPhotoSphereViewer = dynamic<PhotoSphereProps>(
   () => import("react-photo-sphere-viewer").then((mod) => {
-    // لو الـ library موجودة، نرجّع الكومبوننت الأصلي
+    
     return { default: mod.ReactPhotoSphereViewer };
   }).catch(() => {
-    // لو مش موجودة أو فيه مشكلة، نرجّع fallback بسيط
+   
     return {
       default: ({ src }: PhotoSphereProps) => (
         <div className="w-full h-full flex items-center justify-center bg-muted rounded-lg">
@@ -45,7 +40,7 @@ const ReactPhotoSphereViewer = dynamic<PhotoSphereProps>(
   }
 );
 
-// 5. Skeleton loader for suspense fallback
+// 5
 const MediaGallerySkeleton = () => (
   <div className="w-full">
     <div 
@@ -63,12 +58,12 @@ const MediaGallerySkeleton = () => (
   </div>
 );
 
-// 6. Main MediaGallery component
+// 6
 const MediaGallery = memo(() => {
-  // 7. Track currently selected media item
+  // 7
   const [selectedMedia, setSelectedMedia] = useState(mediaItems[0]);
 
-  // 8. Memoized handler for thumbnail selection
+  // 8
   const handleThumbnailClick = useCallback((media: any) => {
     setSelectedMedia(media);
   }, []);
@@ -76,7 +71,7 @@ const MediaGallery = memo(() => {
   return (
     <div className="w-full media-gallery">
     
-    {/* 9. 360 Viewer - lazy loaded */}
+    {/* 9 */}
     {selectedMedia.is360 && !selectedMedia.isVideo ? (
       <div className="viewer-360 rounded-lg overflow-hidden relative w-full aspect-video">
         <ReactPhotoSphereViewer
@@ -86,9 +81,9 @@ const MediaGallery = memo(() => {
         />
       </div>
     ) : !selectedMedia.isVideo ? (
-      // 10. Image container - CSS-based responsive sizing
+      // 10
       <div className="relative w-full max-w-[900px] mx-auto overflow-hidden rounded-2xl bg-gray-100">
-        {/* Padding-bottom hack for perfect 16:9 ratio without layout shifts */}
+       
         <div className="relative pb-[56.25%]">
           <Image
             src={selectedMedia.src}
@@ -105,7 +100,7 @@ const MediaGallery = memo(() => {
       </div>
     ) : null}
 
-    {/* 11. Video iframe */}
+    {/* 11.  */}
     {selectedMedia.isVideo && (
       <div className="w-full aspect-video relative">
         <div className="absolute inset-0 bg-gray-200 animate-pulse rounded-lg"></div>
@@ -122,7 +117,7 @@ const MediaGallery = memo(() => {
       </div>
     )}
 
-    {/* 12. Thumbnail navigation strip */}
+    {/* 12. */}
     <div className="w-full overflow-x-auto scrollbar-hide">
       <div className="flex gap-3 mt-4 pb-2 justify-center w-max mx-auto px-4">
         {mediaItems.map((item, index) => (

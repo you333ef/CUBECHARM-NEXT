@@ -10,8 +10,6 @@ export interface MainCategory {
   name: string;
   subcategories: SubCategory[];
 }
-
-// All categories data – محدث بالكامل 2025
 export const categories: MainCategory[] = [
   {
     id: "tech-general",
@@ -280,7 +278,6 @@ export const categories: MainCategory[] = [
     ],
   },
 
-  // ================== أماكن فعلية (Places) ==================
   {
     id: "places-residential",
     name: "Residential (Accommodations)",

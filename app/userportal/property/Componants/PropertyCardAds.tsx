@@ -62,7 +62,7 @@ const PropertyCard = memo(
         onClick={handleCardClick}
         className="bg-white rounded-xl shadow-sm hover:shadow-lg transition-all duration-300 overflow-hidden max-w-md border border-gray-100 cursor-pointer"
       >
-        {/* Header */}
+      
         <div className="p-3 pb-2 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center text-white font-semibold">
@@ -83,7 +83,7 @@ const PropertyCard = memo(
           </button>
         </div>
 
-        {/* Image Carousel */}
+       
         <div className="relative group">
           <Image
             src={images[currentImageIndex]}
@@ -107,7 +107,7 @@ const PropertyCard = memo(
           </button>
         </div>
 
-        {/* Content */}
+       
         <div className="p-3">
           <p className="text-sm text-gray-700 line-clamp-2 leading-relaxed mb-2">
             {description}

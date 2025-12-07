@@ -37,7 +37,7 @@ const TopNavbar = () => {
           <Link href="/" className="flex items-center gap-2 flex-shrink-0">
             <div className="px-4 py-2">
               <span className="font-bold text-3xl text-blue-500 tracking-wide">
-                cubecharm
+                
               </span>
             </div>
           </Link>

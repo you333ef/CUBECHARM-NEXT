@@ -1,13 +1,39 @@
 "use client"
 import { useState, lazy, Suspense } from "react";
 
-import { MdLocationOn } from "react-icons/md";
+
 import type { StaticImageData } from "next/image";
 import Image from "next/image";
+import dynamic from "next/dynamic";
 
 // Lazy load ReactPhotoSphereViewer
-const ReactPhotoSphereViewer = lazy(() =>
-  import("react-photo-sphere-viewer").then((m) => ({ default: m.ReactPhotoSphereViewer }))
+const ReactPhotoSphereViewer = dynamic<React.ComponentProps<typeof import("react-photo-sphere-viewer").ReactPhotoSphereViewer>>(
+  () => import("react-photo-sphere-viewer").then((mod) => ({
+    default: mod.ReactPhotoSphereViewer
+  })).catch((err) => {
+    console.warn("360 viewer failed to load, falling back to image", err);
+    return {
+      default: ({ src }: any) => (
+        <div className="relative w-full h-full bg-muted rounded-xl overflow-hidden">
+          <Image
+            src={src}
+            alt="360 fallback"
+            fill
+            className="object-cover"
+            unoptimized
+          />
+        </div>
+      )
+    };
+  }),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="h-[600px] w-full bg-gray-200/80 animate-pulse rounded-xl flex items-center justify-center">
+        <div className="text-gray-500">Loading 360 view...</div>
+      </div>
+    ),
+  }
 );
 
 // data shape for each cell
@@ -136,16 +162,21 @@ const PRO_MODE = () => {
     Array.from({ length: height }).map((_, rowIndex) => (
       <div key={`row-${rowIndex}`} className="flex">
         {Array.from({ length: width }).map((_, colIndex) => {
+
           const cellId = `cell-${rowIndex}-${colIndex}`;
+
           const cellData = cells[cellId];
+
           const hasCellImage = !!cellData?.imageUrl;
 
           return (
             <div
               key={cellId}
-              className={`relative w-10 h-10 m-0 border border-border overflow-hidden ${
+              className={`relative w-10 h-10 m-0 border border-border overflow-hidden 
+                ${
                 hasCellImage ? "cursor-pointer transition-all hover:shadow-lg" : ""
               }`}
+
               onClick={() => hasCellImage && setSelectedCell(cellData)}
             >
               {/* base background for empty cells */}
