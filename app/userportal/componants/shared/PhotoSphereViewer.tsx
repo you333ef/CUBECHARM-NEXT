@@ -18,7 +18,7 @@ export default function PhotoSphereViewer({ src }: { src: string }) {
         container: containerRef.current as HTMLElement, 
         panorama: src,
         navbar: ["zoom", "move", "fullscreen"],
-        loadingTxt: "Loading 360°...",
+        loadingTxt: "360°...",
         defaultZoomLvl: 60,
         mousewheelCtrlKey: true,
       });
