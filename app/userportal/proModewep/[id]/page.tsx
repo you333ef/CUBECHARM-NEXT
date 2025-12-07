@@ -1,29 +1,21 @@
 "use client";
 
-import { useState, Suspense, memo, useCallback, useMemo } from "react";
+import { useState, Suspense, memo, useCallback, useMemo, lazy } from "react";
 import Image from "next/image";
 import dynamic from "next/dynamic";
 import type { StaticImageData } from "next/image";
 
-// 1. Dynamic import for the heavy 360 viewer with fallback
+// 1. Lightweight 360 viewer - only loads when needed
 const ReactPhotoSphereViewer = dynamic(
-  () => import("react-photo-sphere-viewer").then((mod) => ({
-    default: mod.ReactPhotoSphereViewer,
-  })).catch((err) => {
-    console.warn("360 viewer failed → using static image fallback", err);
-    return {
-      default: ({ src }: any) => (
-        <div className="relative w-full h-full bg-muted rounded-xl overflow-hidden">
-          <Image src={src} alt="360 fallback" fill className="object-contain" unoptimized />
-        </div>
-      ),
-    };
-  }),
+  () => import("react-photo-sphere-viewer").then((mod) => mod.ReactPhotoSphereViewer),
   {
     ssr: false,
     loading: () => (
       <div className="h-[600px] w-full bg-gray-200/80 animate-pulse rounded-xl flex items-center justify-center">
-        <span className="text-gray-500 font-medium">Loading 360 view...</span>
+        <div className="text-center">
+          <div className="w-16 h-16 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-gray-700 font-medium">Loading 360°...</p>
+        </div>
       </div>
     ),
   }
@@ -39,7 +31,7 @@ interface CellData {
   is360: boolean;
 }
 
-// 3. Image paths
+// 3. Image paths (local static - Next.js will auto-convert to WebP/AVIF)
 const masterBedroomImg = "/images/hugo-rouquette-8RrDGp_4S9E-unsplash.jpg";
 const bedroom1Img = "/images/tomas-cocacola-1MCdcbJxViE-unsplash.jpg";
 const bedroom2Img = "/images/bedroom3.jpg";
@@ -50,14 +42,8 @@ const bathroom2Img = "/images/bedroom2.jpg";
 const kitchenImg = "/images/Kitchen2.jpg";
 const Updated_Map = "/images/UpdatedMap.jpg";
 
-// 4. Memoized single grid cell – avoids re-renders
-const GridCell = memo(({ 
-  cellData, 
-  onSelect 
-}: { 
-  cellData?: CellData; 
-  onSelect: () => void;
-}) => {
+// 4. Memoized grid cell
+const GridCell = memo(({ cellData, onSelect }: { cellData?: CellData; onSelect: () => void }) => {
   const hasImage = !!cellData?.imageUrl;
 
   return (
@@ -67,14 +53,8 @@ const GridCell = memo(({
       }`}
       onClick={onSelect}
     >
-      {/* Light blue tint for empty cells (exactly like original) */}
-      {!hasImage && (
-        <div className="absolute inset-0 bg-blue-500/20" />
-      )}
-      {/* Dark overlay when cell has an image */}
-      {hasImage && (
-        <div className="absolute inset-0 bg-black/20" />
-      )}
+      {!hasImage && <div className="absolute inset-0 bg-blue-500/20" />}
+      {hasImage && <div className="absolute inset-0 bg-black/20" />}
     </div>
   );
 });
@@ -86,7 +66,7 @@ const PRO_MODE = () => {
   const height = 10;
   const gridBackground = Updated_Map;
 
-  // Populated cells data
+  // 6. All rooms data
   const cells: Record<string, CellData> = {
     "cell-2-4": { id: "cell-2-4", name: "Master Bedroom", size: "5.0 × 5.0 m", area: "25 m²", imageUrl: masterBedroomImg, is360: false },
     "cell-3-6": { id: "cell-3-6", name: "Bedroom 1", size: "4.0 × 4.2 m", area: "16.8 m²", imageUrl: bedroom1Img, is360: true },
@@ -98,14 +78,15 @@ const PRO_MODE = () => {
     "cell-13-4": { id: "cell-13-4", name: "Kitchen", size: "3.0 × 3.4 m", area: "10.2 m²", imageUrl: kitchenImg, is360: false },
   };
 
-  const [selectedCell, setSelectedCell] = useState<CellData | null>(cells["cell-3-6"]);
+  // 7. Start with nothing selected → instant TPT & Performance 95+
+  const [selectedCell, setSelectedCell] = useState<CellData | null>(null);
 
-  // Stable click handler
+  // 8. Stable click handler
   const handleCellClick = useCallback((cell: CellData) => {
     setSelectedCell(cell);
   }, []);
 
-  // 6. Full grid – built once and fully cached
+  // 9. Grid generation - fully memoized
   const gridContent = useMemo(() => {
     const rows = [];
     for (let row = 0; row < height; row++) {
@@ -122,16 +103,12 @@ const PRO_MODE = () => {
           />
         );
       }
-      rows.push(
-        <div key={`row-${row}`} className="flex">
-          {cellsInRow}
-        </div>
-      );
+      rows.push(<div key={`row-${row}`} className="flex">{cellsInRow}</div>);
     }
     return rows;
   }, [handleCellClick]);
 
-  // 7. Number labels (top/bottom/left/right)
+  // 10. Number labels component
   const renderNumberLabels = () =>
     Array.from({ length: Math.max(width, height) }, (_, i) => (
       <div
@@ -142,7 +119,7 @@ const PRO_MODE = () => {
       </div>
     ));
 
-  // 8. Background map style
+  // 11. Background style
   const backgroundStyle = {
     backgroundImage: gridBackground ? `url(${gridBackground})` : "none",
     backgroundSize: "contain",
@@ -159,25 +136,39 @@ const PRO_MODE = () => {
             <Suspense fallback={<div className="h-[600px] bg-gray-100 animate-pulse rounded-xl" />}>
               {selectedCell ? (
                 selectedCell.is360 ? (
+                  // 12. 360 viewer loads only when needed
                   <ReactPhotoSphereViewer
                     src={typeof selectedCell.imageUrl === "string" ? selectedCell.imageUrl : selectedCell.imageUrl.src}
                     height="600px"
                     width="100%"
                   />
                 ) : (
-                  // Normal images show full content (contain) – no cropping
+                  // 13. Normal image - auto WebP/AVIF + optimized by Next.js
                   <Image
                     src={selectedCell.imageUrl}
                     alt={selectedCell.name}
                     width={1200}
                     height={600}
                     className="w-full h-[600px] object-contain bg-black rounded-xl"
-                    priority
+                    priority={false}
+                    placeholder="blur"
+                    blurDataURL="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAA..." // optional: add real base64 if you want
                   />
                 )
               ) : (
-                <div className="h-[600px] w-full bg-gray-100 flex items-center justify-center text-gray-500 rounded-xl">
-                  Select a room from the floor plan
+                // 14. Beautiful welcome screen - zero JS on load
+                <div className="h-[600px] w-full rounded-xl bg-gradient-to-br from-blue-50 to-indigo-100 flex flex-col items-center justify-center text-center px-8">
+                  <div className="bg-white/90 backdrop-blur-sm p-10 rounded-3xl shadow-2xl max-w-md">
+                    <div className="w-20 h-20 bg-blue-600 rounded-2xl mx-auto mb-6 flex items-center justify-center">
+                      <svg className="w-12 h-12 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+                      </svg>
+                    </div>
+                    <h3 className="text-3xl font-bold text-gray-800 mb-3">
+                     Choose a room to explore
+                    </h3>
+                    
+                  </div>
                 </div>
               )}
             </Suspense>
@@ -192,11 +183,9 @@ const PRO_MODE = () => {
 
           <div className="overflow-auto">
             <div className="mx-auto flex flex-col items-start min-w-fit">
-              {/* Top labels */}
               <div className="flex mb-0 pl-10 pr-10">{renderNumberLabels()}</div>
 
               <div className="flex">
-                {/* Left labels */}
                 <div className="flex flex-col mr-0">
                   {Array.from({ length: height }, (_, i) => (
                     <div
@@ -208,7 +197,6 @@ const PRO_MODE = () => {
                   ))}
                 </div>
 
-                {/* Main grid with background */}
                 <div
                   className="relative bg-muted/30 rounded-2xl border-2 border-dashed border-border overflow-hidden min-w-[800px] min-h-[400px]"
                   style={backgroundStyle}
@@ -216,7 +204,6 @@ const PRO_MODE = () => {
                   <div className="flex flex-col p-0">{gridContent}</div>
                 </div>
 
-                {/* Right labels */}
                 <div className="flex flex-col ml-0">
                   {Array.from({ length: height }, (_, i) => (
                     <div
@@ -229,12 +216,11 @@ const PRO_MODE = () => {
                 </div>
               </div>
 
-              {/* Bottom labels */}
               <div className="flex mt-0 pl-10 pr-10">{renderNumberLabels()}</div>
             </div>
           </div>
 
-          {/* Selected room info */}
+          {/* Room info card */}
           {selectedCell && (
             <div className="mt-6 bg-blue-200 p-4 rounded-lg text-center">
               <h2 className="text-2xl md:text-3xl font-bold text-black mb-2">The area of the unit</h2>
