@@ -6,10 +6,9 @@ import dynamic from "next/dynamic";
 import type { StaticImageData } from "next/image";
 import PhotoSphereViewer from "../../componants/shared/PhotoSphereViewer";
 
-// 1. Lightweight 360 viewer - only loads when needed
 
 
-// 2. Cell data structure
+// 2. 
 interface CellData {
   id: string;
   name: string;
@@ -19,7 +18,7 @@ interface CellData {
   is360: boolean;
 }
 
-// 3. Image paths (local static - Next.js will auto-convert to WebP/AVIF)
+// 3. 
 const masterBedroomImg = "/images/hugo-rouquette-8RrDGp_4S9E-unsplash.jpg";
 const bedroom1Img = "/images/tomas-cocacola-1MCdcbJxViE-unsplash.jpg";
 const bedroom2Img = "/images/bedroom3.jpg";
@@ -30,7 +29,7 @@ const bathroom2Img = "/images/bedroom2.jpg";
 const kitchenImg = "/images/Kitchen2.jpg";
 const Updated_Map = "/images/UpdatedMap.jpg";
 
-// 4. Memoized grid cell
+// 4.
 const GridCell = memo(({ cellData, onSelect }: { cellData?: CellData; onSelect: () => void }) => {
   const hasImage = !!cellData?.imageUrl;
 
@@ -48,13 +47,13 @@ const GridCell = memo(({ cellData, onSelect }: { cellData?: CellData; onSelect: 
 });
 GridCell.displayName = "GridCell";
 
-// 5. Main component
+// 5.
 const PRO_MODE = () => {
   const width = 20;
   const height = 10;
   const gridBackground = Updated_Map;
 
-  // 6. All rooms data
+  // 6.
   const cells: Record<string, CellData> = {
     "cell-2-4": { id: "cell-2-4", name: "Master Bedroom", size: "5.0 × 5.0 m", area: "25 m²", imageUrl: masterBedroomImg, is360: false },
     "cell-3-6": { id: "cell-3-6", name: "Bedroom 1", size: "4.0 × 4.2 m", area: "16.8 m²", imageUrl: bedroom1Img, is360: true },
@@ -66,15 +65,15 @@ const PRO_MODE = () => {
     "cell-13-4": { id: "cell-13-4", name: "Kitchen", size: "3.0 × 3.4 m", area: "10.2 m²", imageUrl: kitchenImg, is360: false },
   };
 
-  // 7. Start with nothing selected → instant TPT & Performance 95+
+  // 7. 
   const [selectedCell, setSelectedCell] = useState<CellData | null>(null);
 
-  // 8. Stable click handler
+  // 8. 
   const handleCellClick = useCallback((cell: CellData) => {
     setSelectedCell(cell);
   }, []);
 
-  // 9. Grid generation - fully memoized
+  // 9.
   const gridContent = useMemo(() => {
     const rows = [];
     for (let row = 0; row < height; row++) {
@@ -96,7 +95,7 @@ const PRO_MODE = () => {
     return rows;
   }, [handleCellClick]);
 
-  // 10. Number labels component
+  // 10
   const renderNumberLabels = () =>
     Array.from({ length: Math.max(width, height) }, (_, i) => (
       <div
@@ -107,7 +106,7 @@ const PRO_MODE = () => {
       </div>
     ));
 
-  // 11. Background style
+  // 11.
   const backgroundStyle = {
     backgroundImage: gridBackground ? `url(${gridBackground})` : "none",
     backgroundSize: "contain",
@@ -118,20 +117,20 @@ const PRO_MODE = () => {
   return (
     <div className="bg-[#f7f9fc] min-h-screen">
       <main className="max-w-screen-lg mx-auto p-4 md:p-6 flex flex-col gap-8">
-        {/* Viewer Section */}
+      
         <section className="rounded-2xl shadow-lg p-6 border bg-white">
           <div className="rounded-xl overflow-hidden mt-4">
             <Suspense fallback={<div className="h-[600px] bg-gray-100 animate-pulse rounded-xl" />}>
               {selectedCell ? (
                 selectedCell.is360 ? (
-                  // 12. 360 viewer loads only when needed
+                  // 12.
                   <PhotoSphereViewer
                     src={typeof selectedCell.imageUrl === "string" ? selectedCell.imageUrl : selectedCell.imageUrl.src}
                     
                     
                   />
                 ) : (
-                  // 13. Normal image - auto WebP/AVIF + optimized by Next.js
+                  // 13.
                   <Image
                     src={selectedCell.imageUrl}
                     alt={selectedCell.name}
@@ -144,7 +143,7 @@ const PRO_MODE = () => {
                   />
                 )
               ) : (
-                // 14. Beautiful welcome screen - zero JS on load
+                // 14
                 <div className="h-[600px] w-full rounded-xl bg-gradient-to-br from-blue-50 to-indigo-100 flex flex-col items-center justify-center text-center px-8">
                   <div className="bg-white/90 backdrop-blur-sm p-10 rounded-3xl shadow-2xl max-w-md">
                     <div className="w-20 h-20 bg-blue-600 rounded-2xl mx-auto mb-6 flex items-center justify-center">
