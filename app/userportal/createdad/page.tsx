@@ -1,13 +1,11 @@
 "use client";
-
 import Input from "../componants/shared/Input";
 import Textarea from "../componants/shared/Textarea";
 import Button from "../componants/shared/Button";
 import CategoryDropdown from "../componants/shared/CategoryDropdown";
 import { useForm } from "react-hook-form";
 import { useState } from "react";
-import { useRouter } from "next/navigation";
-
+import { useRouter, useSearchParams } from "next/navigation";
 type FormData = {
   category: string;
   size: string;
@@ -43,6 +41,18 @@ const CreateAd = () => {
     setVideo(null);
     router.push("/");
   };
+
+  const SearchParams=useSearchParams()
+  const source=SearchParams.get('source')
+
+
+  const Router = useRouter()
+
+const funToProMode=()=>{
+  Router.push('/userportal/proMode')
+}
+
+  
 
   return (
     <div className="min-h-screen bg-gray-50 py-12">
@@ -149,6 +159,19 @@ const CreateAd = () => {
                 />
                 {errors.description && <p className="text-red-500 text-sm mt-1">{errors.description.message}</p>}
               </div>
+              {source==='new_upload_with_pro_mode'&&
+                    <div className="md:col-span-5">
+                <Button
+                  name="Create ProMode Announcement"
+                  type="button"
+                  onClick={funToProMode}
+                  className="w-full bg-blue-400 hover:bg-blue-700 text-white text-lg py-4 rounded-xl transition"
+                />
+              </div>
+              
+              
+              }
+         
 
               {/* Images Upload */}
               <div className="md:col-span-5">

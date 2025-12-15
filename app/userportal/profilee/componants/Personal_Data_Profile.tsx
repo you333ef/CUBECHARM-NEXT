@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, FC  } from "react";
 import Image from "next/image";
-import { useRouter, useSearchParams } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { FaAngleLeft, FaTimes } from "react-icons/fa";
 import { IoIosAddCircle } from "react-icons/io";
 import Button from "../../componants/shared/Button";
@@ -73,6 +73,8 @@ const UserRow = ({ user, isFollowing, onAction }: {
   isFollowing: boolean;
   onAction: (id: number) => void;
 }) => {
+ 
+
   return (
     <div className="flex items-center justify-between py-4 border-b border-gray-100 last:border-0">
       <div className="flex items-center gap-3">
@@ -126,6 +128,8 @@ export default function PersonalDataProfile() {
     if (history.length > 1) router.back();
     else router.push("/default-home");
   };
+   const path=usePathname()
+  const isOwner = path === "/userportal/profilee";
   return (
     <>
       {/*9*/}
@@ -143,13 +147,19 @@ export default function PersonalDataProfile() {
             <h1 className="text-2xl font-bold">{profileData.username}</h1>
             <div className="w-10 md:hidden" />
           </div>
-
           {/* 11 */}
+          
           <div className="flex justify-between items-start py-5 border-y text-sm font-medium">
-            <button onClick={() => setShowAddModal(true)} className="flex flex-col items-center gap-1 text-blue-600">
+            {isOwner ? <button onClick={() => setShowAddModal(true)} className="flex flex-col items-center gap-1 text-blue-600">
               <IoIosAddCircle size={28} />
-              <span>{isPostMode ? "Add Post" : "Add Story"}</span>
+              <span>   {isOwner && 'Add Story'} </span>
+            </button>:
+             <button  className="flex flex-col items-center gap-1">
+             <div className="font-bold text-lg">60</div>
+               <div className="text-gray-600">Ads</div>
             </button>
+            }
+           
             <button onClick={() => setShowFollowers(true)} className="text-center">
               <div className="font-bold text-lg">{followers.length}</div>
               <div className="text-gray-600">Followers</div>
@@ -165,10 +175,16 @@ export default function PersonalDataProfile() {
             <div className="text-center md:text-left flex-1">
               <h2 className="text-2xl font-bold">{profileData.name}</h2>
               <p className="text-gray-600 mt-2">{profileData.bio}</p>
-              <div className="flex flex-wrap justify-center md:justify-start gap-3 mt-6">
+              {isOwner?<div className="flex flex-wrap justify-center md:justify-start gap-3 mt-6">
                 <Button name="Account Info" onClick={() => router.push("/userportal/Settings/profilesettings/profile_info")} className="bg-blue-600 text-white px-6 py-2 rounded-lg" />
                 <Button name="Update Profile" onClick={() => router.push("/userportal/Settings/profilesettings/update")} className="bg-gray-300 px-6 py-2 rounded-lg" />
               </div>
+              :      <div className="flex flex-wrap justify-center md:justify-start gap-3 mt-6">
+              <Button name="follow" className="bg-gray-600 text-white capitalize py-2 px-6 rounded-lg me-5"/>
+            <Button name="message" className="bg-blue-600 text-white ml- capitalize py-2 px-6 rounded-lg"/>
+          </div>}
+              
+         
             </div>
             <Image
               src="/images/a9054bca-63af-4ee6-a443-e15e322569c3.png"

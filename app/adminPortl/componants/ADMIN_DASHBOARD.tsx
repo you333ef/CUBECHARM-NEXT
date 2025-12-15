@@ -11,24 +11,18 @@ import {
   Cell,
   CartesianGrid,
 } from "recharts";
-
 const ADMIN_DASHBOARD = () => {
 // 1
   const topCountries = [
     { name: "Egypt", value: 70 },
-   
     { name: "Qatar", value: 20 },
     { name: "Turkey", value: 10 },
   ];
-
   const propertyCategories = [
     { name: "Villas", value: 50 },
     { name: "Houses", value: 20 },
-   
     { name: "Palaces", value: 30 },
   ];
-
-
   const COLORS = ["#3b82f6", "#64748b", "#475569", "#1e293b", "#0f172a"];
 // 2
   const stats = [
@@ -63,7 +57,6 @@ const ADMIN_DASHBOARD = () => {
           </div>
         ))}
       </div>
-
     {/* 4 */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-8 overflow-x-hidden">
        
@@ -100,7 +93,6 @@ const ADMIN_DASHBOARD = () => {
             </ResponsiveContainer>
           </div>
         </div>
-
       {/* 6 */}
         <div className="bg-white rounded-xl border border-gray-200 p-5 shadow-sm">
           <h2 className="text-lg font-semibold text-gray-700 mb-4 flex items-center gap-2">

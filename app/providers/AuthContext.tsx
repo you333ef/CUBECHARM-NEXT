@@ -9,7 +9,7 @@ interface AuthContextType {
 //  First Step Creating
 const AuthContext = createContext<AuthContextType | null>(null);
 export const AuthProvider = ({ children }: any) => {
-  const [role, setRole] = useState("user");
+  const [role, setRole] = useState("admin");
 //    Secend Step Providing
   return (
     <AuthContext.Provider value={{ role, setRole }}>

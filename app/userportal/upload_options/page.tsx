@@ -92,7 +92,7 @@ const UploadOptionPage = () => {
           </button>
 
           <button
-            onClick={() => handleOptionClick('ad', '/userportal/createdad')}
+            onClick={() => handleOptionClick('ad', '/userportal/Upload_with')}
             className="w-full p-4 sm:p-5 rounded-2xl sm:rounded-3xl flex items-center gap-3 sm:gap-4 transition-all duration-200 hover:scale-[1.01] active:scale-[0.99] shadow-sm hover:shadow-md"
             style={{
               backgroundColor: selectedOption === 'ad' ? '#fff5e8' : '#ffffff',
@@ -103,7 +103,7 @@ const UploadOptionPage = () => {
               <HiSpeakerphone size={22} className="text-white" />
             </div>
             <div className="flex-1 text-right min-w-0">
-              <h3 className="text-base sm:text-lg font-bold text-[#1a1a1a]">Announcement</h3>
+              <h3 className="text-base sm:text-lg font-bold text-[#1a1a1a]">Upload</h3>
               <p className="text-xs sm:text-sm text-[#666666] mt-0.5">Broadcast a message</p>
             </div>
             <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-[#f0f0f0] flex items-center justify-center flex-shrink-0">
@@ -111,25 +111,7 @@ const UploadOptionPage = () => {
             </div>
           </button>
 
-          <button
-            onClick={() => handleOptionClick('pro', '/userportal/proMode')}
-            className="w-full p-4 sm:p-5 rounded-2xl sm:rounded-3xl flex items-center gap-3 sm:gap-4 transition-all duration-200 hover:scale-[1.01] active:scale-[0.99] shadow-sm hover:shadow-md"
-            style={{
-              backgroundColor: selectedOption === 'pro' ? '#eef2ff' : '#ffffff',
-              border: selectedOption === 'pro' ? '2px solid #6366f1' : '2px solid #e8eaed'
-            }}
-          >
-            <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-xl sm:rounded-2xl bg-[#6366f1] flex items-center justify-center flex-shrink-0">
-              <FiUpload size={22} className="text-white" />
-            </div>
-            <div className="flex-1 text-right min-w-0">
-              <h3 className="text-base sm:text-lg font-bold text-[#1a1a1a]">Upload Pro Mode</h3>
-              <p className="text-xs sm:text-sm text-[#666666] mt-0.5">Access advanced upload features</p>
-            </div>
-            <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-[#f0f0f0] flex items-center justify-center flex-shrink-0">
-              <FaArrowLeft className="text-[#666666] text-sm sm:text-base" />
-            </div>
-          </button>
+        
 
         </div>
       </div>

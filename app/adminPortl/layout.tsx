@@ -25,16 +25,17 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
   const [menuItems, setMenu] = useState<MenuItem[]>([
     { name: "Dashboard", icon: <FaHome />, path: "/adminPortl", active: true },
     { name: "Clients", icon: <FaUsers />, path: "/adminPortl/clients_info" },
-    { name: "Category", icon: <MdDashboard />, path: "/adminPortl/cateoverview" },
-    {
-      name: "Posts",
-      icon: <MdOutlinePendingActions />,
-      subItems: [
-        { name: "Pending", icon: <MdOutlinePendingActions />, path: "/adminPortl/pending" },
-        { name: "Approved", icon: <FaCheckCircle />, path: "/adminPortl/approved" },
-        { name: "Rejected", icon: <FaTimesCircle />, path: "/adminPortl/rejected" },
-      ],
-    },
+    { name: "CateOverview", icon: <MdDashboard />, path: "/adminPortl/cateoverview" },
+     { name: "CateManegment", icon: <MdDashboard />, path: "/adminPortl/CategoriesManegment" },
+    // {
+    //   name: "Posts",
+    //   icon: <MdOutlinePendingActions />,
+    //   subItems: [
+    //     { name: "Pending", icon: <MdOutlinePendingActions />, path: "/adminPortl/pending" },
+    //     { name: "Approved", icon: <FaCheckCircle />, path: "/adminPortl/approved" },
+    //     { name: "Rejected", icon: <FaTimesCircle />, path: "/adminPortl/rejected" },
+    //   ],
+    // },
     { name: "Reports", icon: <FaFlag />, path: "/adminPortl/reports" },
     { name: "Settings", icon: <MdSettings />, path: "/adminPortl/settings" },
   ]);

@@ -57,7 +57,7 @@ const SellerProfile = memo(() => (
       loading="lazy"
     />
     <div className="flex-1">
-      <Link href="/userportal/profilee" className="text-lg font-semibold text-blue-600 hover:underline">Yassine</Link>
+      <Link href="/userportal/profilee/Yassine" className="text-lg font-semibold text-blue-600 hover:underline">Yassine</Link>
       <div className="flex items-center gap-1 mt-1">
         <Star className="text-yellow-400" size={16} />
         <span className="text-sm font-semibold">4.8</span>

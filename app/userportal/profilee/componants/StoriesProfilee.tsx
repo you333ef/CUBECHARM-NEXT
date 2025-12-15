@@ -19,12 +19,13 @@ export default function StoriesProfilee() {
   };
 
   const pathname = usePathname();
-  const isProfilePage = pathname === "/userportal/profilee"; // (4) 
+ const isowner=pathname.includes("/userportal/profilee") 
+  
 
   return (
     <div
       className={`flex gap-3 justify-start mx-auto overflow-x-auto py-4 px-2 scrollbar-hide
-      ${isProfilePage ? "max-w-3xl" : ""}
+      ${isowner ? "max-w-3xl" : ""}
     `}
     >
       {profileData.stories.map((story: any) => {

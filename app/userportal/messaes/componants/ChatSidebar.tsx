@@ -3,9 +3,6 @@ import { useState } from "react";
 import { FiSearch, FiMoreVertical } from "react-icons/fi";
 import { BsCheck, BsCheckAll } from "react-icons/bs"; 
 import { useRouter } from "next/navigation";
-
-
-
 // 1
 type MessageStatus = "sent" | "delivered" | "read";
 
@@ -45,7 +42,6 @@ const ChatSidebar = ({ selectedChatId, onSelectChat }: ChatSidebarProps) => {
       status: "delivered",
       archived: false,
     },
-   
     {
       id: 2,
       name: "Yousef Khaled Dev ",
@@ -80,7 +76,7 @@ const ChatSidebar = ({ selectedChatId, onSelectChat }: ChatSidebarProps) => {
       id: 5,
       name: "Layla Ibrahim",
       avatar: "https://i.pravatar.cc/150?img=38",
-      lastMessage: "🎤 Voice message",
+      lastMessage: " Voice message",
       timestamp: "2 weeks ago",
       unread: true,
       status: "sent",
