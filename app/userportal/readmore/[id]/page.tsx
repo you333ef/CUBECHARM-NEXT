@@ -14,13 +14,10 @@ import { BiArea } from "react-icons/bi";
 import { toast } from "sonner";
 import { useParams, usePathname } from "next/navigation";
 import { useRouter } from "next/navigation";
-
 const bedroomImg = "/images/BEDROOM1.jpg";
 const livingImg = "/images/Living.jpg";
-
 const kitchenImg = "/images/Kitchen.jpg";
  const bathroomImg ="/images/bathroom.jpg";
-
 // Data for rooms Fake 
 const rooms = [
   {
@@ -82,44 +79,14 @@ const ProMode = () => {
     NAVIGATE.push(`/userportal/proModewep/${id}`)
 
   }
-  
  const path = usePathname();
 const ISPROMODE = path.includes("ADMINpro-mode");
 const Report = path.includes("ADMINpro-Report");
-
- 
 //  لو في حالة ال Approval أو حالة ال Rejectd 
- const handleApprove = (item: any) => {
+ 
+ 
 
-    toast.success(`This post has been approved.`)
-    NAVIGATE.push('/ADMIN_LAYOUT/Pending_Posts')
-    
-  }
-  const handleReject = (item: any) => {
-
-toast.error(`This post has been rejected !.`);
- NAVIGATE.push('/ADMIN_LAYOUT/Pending_Posts')
-
-
-
-    console.log('Rejected:', item)
-  }
-
-   const handleBlock = (item: any) => {
-
-    toast.success(`This User has been Blocked for 10 days.`)
-    NAVIGATE.push('/ADMIN_LAYOUT/REPORTS')
-    
-  }
-  const handleDelete = (item: any) => {
-
-toast.error(`this post has been Deleted !.`);
- NAVIGATE.push('/ADMIN_LAYOUT/REPORTS')
-
-
-
-    console.log('Rejected:', item)
-  }
+  
 
   return (
     <div className="min-h-screen bg-[#f8f9fa]">
@@ -324,30 +291,7 @@ toast.error(`this post has been Deleted !.`);
 )}
 
 {/* Buttons Section - Hidden if Report exists */}
-{!Report && (
-  ISPROMODE ? (
-    <div className="flex flex-col gap-3">
-      <button
-        onClick={TO_Details}
-        className="w-full py-4 bg-[#3b82f6] text-[#ffffff] rounded-xl font-bold text-lg hover:bg-[#0c4197] transition-all shadow-md hover:shadow-lg"
-      >
-        See More Details
-      </button>
-      <button
-        onClick={handleApprove}
-        className="w-full py-4 bg-[#07ba22] text-[#fff] rounded-xl font-bold text-lg hover:bg-[#07ba27] transition-all shadow-md hover:shadow-lg"
-      >
-        Approval
-      </button>
-      <button
-        onClick={handleReject}
-        className="w-full py-4 bg-[#dc2626] text-white rounded-xl font-bold text-lg hover:bg-[#991b1b] transition-all shadow-md hover:shadow-lg"
-      >
-        Rejection
-      </button>
-    </div>
-  ) : (
-    <div className="flex flex-col gap-3">
+   <div className="flex flex-col gap-3">
       <button
         onClick={TO_Message}
         className="w-full py-4 bg-[#3b82f6] text-[#ffffff] rounded-xl font-bold text-lg hover:bg-[#0c4197] transition-all shadow-md hover:shadow-lg"
@@ -361,8 +305,6 @@ toast.error(`this post has been Deleted !.`);
         See More Details
       </button>
     </div>
-  )
-)}
 
          
             </div>
