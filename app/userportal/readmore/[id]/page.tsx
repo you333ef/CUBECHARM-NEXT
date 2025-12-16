@@ -58,6 +58,8 @@ const rooms = [
     features: ["Elegant bathtub", "Glass shower", "Hidden lighting"]
   }
 ];
+const LCP_IMAGE = "/images/BEDROOM1.jpg";
+
 
 const ProMode = () => {
   //  هنحتاجه  بعدين يكبير 
@@ -114,7 +116,7 @@ const Report = path.includes("ADMINpro-Report");
               {/* Main Image*/}
               <div className="relative bg-[#f8f9fa] flex items-center justify-center min-h-[350px] md:min-h-[450px] lg:min-h-[550px]">
                 <Image
-    src={selectedRoom.image}
+    src={LCP_IMAGE}
     alt={selectedRoom.nameEn}
     fill
     priority
@@ -147,7 +149,7 @@ const Report = path.includes("ADMINpro-Report");
                         }
                       `}
                     >
-                      <img 
+                      <Image
                         src={room.image} 
                         alt={room.nameEn}
                         className="w-20 h-16 md:w-24 md:h-20 object-cover"
