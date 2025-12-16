@@ -14,6 +14,7 @@ import { BiArea } from "react-icons/bi";
 import { toast } from "sonner";
 import { useParams, usePathname } from "next/navigation";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 const bedroomImg = "/images/BEDROOM1.jpg";
 const livingImg = "/images/Living.jpg";
 const kitchenImg = "/images/Kitchen.jpg";
@@ -112,11 +113,15 @@ const Report = path.includes("ADMINpro-Report");
             <div className="bg-[#ffffff] rounded-2xl shadow-lg overflow-hidden sticky top-6">
               {/* Main Image*/}
               <div className="relative bg-[#f8f9fa] flex items-center justify-center min-h-[350px] md:min-h-[450px] lg:min-h-[550px]">
-                <img 
-                  src={selectedRoom.image} 
-                  alt={selectedRoom.nameEn}
-                  className="w-full h-full max-h-[350px] md:max-h-[450px] lg:max-h-[550px] object-contain transition-all duration-500"
-                />
+                <Image
+    src={selectedRoom.image}
+    alt={selectedRoom.nameEn}
+    fill
+    priority
+    sizes="(max-width: 768px) 100vw, 50vw"
+    className="object-contain transition-all duration-500"
+  />
+
                {/* Room title above the image */}
                 <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-[#000000dd] via-[#00000066] to-transparent p-4 md:p-6">
                   <h2 className="text-[#ffffff] text-xl md:text-2xl lg:text-3xl font-bold">
@@ -267,28 +272,7 @@ const Report = path.includes("ADMINpro-Report");
 
               </div>
          {/* Report Section */}
-{Report && (
-  <div className="flex flex-col gap-3">
-    <button
-      onClick={TO_Details}
-      className="w-full py-4 bg-[#3b82f6] text-[#ffffff] rounded-xl font-bold text-lg hover:bg-[#0c4197] transition-all shadow-md hover:shadow-lg"
-    >
-      See More Details
-    </button>
-    <button
-      onClick={handleBlock}
-      className="w-full py-4 bg-[#07ba22] text-[#fff] rounded-xl font-bold text-lg hover:bg-[#07ba27] transition-all shadow-md hover:shadow-lg"
-    >
-      Block This User for 10 Days
-    </button>
-    <button
-      onClick={handleDelete}
-      className="w-full py-4 bg-[#dc2626] text-white rounded-xl font-bold text-lg hover:bg-[#991b1b] transition-all shadow-md hover:shadow-lg"
-    >
-      Delete This Post
-    </button>
-  </div>
-)}
+
 
 {/* Buttons Section - Hidden if Report exists */}
    <div className="flex flex-col gap-3">
