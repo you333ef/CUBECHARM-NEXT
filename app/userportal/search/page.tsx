@@ -1,31 +1,77 @@
 'use client'
-import { useState, useEffect } from "react";
+import { useState, useEffect, useContext } from "react";
 import { IoSearch, IoClose } from "react-icons/io5";
-// الكارد اللي هنعرض فيها اللي احنا محتاجينه
+// Component to display property cards
 import PropertyCard from "../componants/shared/PropertyCard";
-//  الداتا الفيك اللي انا مستدعيها من ال Utilites
-import { properties } from "../../utils/Property_Search";
-//  Icons For Padge
+// Icons for page
 import { FaSlidersH, FaHistory } from "react-icons/fa";
+import AuthContext from "@/app/providers/AuthContext";
+import axios from "axios";
 
 const SEARCH = () => {
-    //  هيتكتب فيها اللي هيتحط في ال Input
+  // State for search query
   const [searchQuery, setSearchQuery] = useState("");
-//    هشوف بيها ال Filter مفتوح ولا مقفغول و بناءً عليه  ال Featchers هتتغير 
+  // Toggle for filter visibility
   const [showFilter, setShowFilter] = useState(false);
-//  الحاجات اللي سرشت عنها  الأيتم بتاعتها
+  // Toggle for search history visibility
   const [showSearches, setShowSearches] = useState(false);
-//    
+  // State for search history
   const [searchHistory, setSearchHistory] = useState<string[]>([]);
-//    
+  // State for minimum price filter
   const [priceMin, setPriceMin] = useState("");
-
+  // State for maximum price filter
   const [priceMax, setPriceMax] = useState("");
-
+  // State for date from filter (ignored for now)
   const [dateFrom, setDateFrom] = useState("");
-
+  // State for date to filter (ignored for now)
   const [dateTo, setDateTo] = useState("");
-//  لو فيه عندك داتا متخزنة في ال Local Storage  هتمريها هنا بعد متعملها 
+  // State for loading indicator
+  const [loading, setLoading] = useState(true);
+  // State for properties list
+  const [properties, setProperties] = useState<any[]>([]);
+  const { baseUrl } = useContext(AuthContext)!;
+
+  // Fetch properties based on search or feed
+  const fetchData = async () => {
+    setLoading(true);
+    try {
+      const isSearching = searchQuery.trim() !== '' || priceMin !== '' || priceMax !== '';
+      const endpoint = isSearching ? 'search' : 'feed';
+      const params: any = {
+        page: 1,
+        pageSize: 24,
+      };
+      if (isSearching) {
+        if (searchQuery.trim()) params.q = searchQuery.trim();
+        if (priceMin) params.minPrice = Number(priceMin);
+        if (priceMax) params.maxPrice = Number(priceMax);
+      } else {
+        params.sort = 'recent';
+      }
+      const response = await axios.get(`${baseUrl}/Property/${endpoint}`, { params });
+      if (response.status === 200) {
+        const items = response.data.data.items.map((item: any) => {
+          const formatUrl = (url: string | null) => {
+            if (!url) return null;
+            if (url.startsWith("http")) return url;
+            return `http://localhost:5000/${url}`;
+          };
+          return {
+            ...item,
+            imageUrl1: formatUrl(item.imageUrl1),
+            mainImage: formatUrl(item.imageUrl1),
+          };
+        });
+        setProperties(items);
+      }
+    } catch (error) {
+      console.error("Error fetching properties:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Load search history from localStorage
   useEffect(() => {
     const saved = localStorage.getItem("searchHistory");
     if (saved) {
@@ -33,30 +79,36 @@ const SEARCH = () => {
     }
   }, []);
 
+  // Fetch data when search parameters change
+  useEffect(() => {
+    fetchData();
+  }, [searchQuery, priceMin, priceMax]);
+
+  // Save query to history if new and non-empty
   const saveToHistory = (query: string) => {
-    //  الدالة هشتتغل  بسسسس  لو  ال Query مش فاضية و مش متكررة 
     if (query.trim() && !searchHistory.includes(query.trim())) {
-      //  حط الكلمة  الديدة في أول القايمة و الباقي بعدها 
       const newHistory = [query.trim(), ...searchHistory].slice(0, 10);
       setSearchHistory(newHistory);
-      //  علشان الداتا تفضل محفوظة 
       localStorage.setItem("searchHistory", JSON.stringify(newHistory));
     }
   };
 
+  // Remove item from search history
   const removeFromHistory = (query: string) => {
     const newHistory = searchHistory.filter(item => item !== query);
     setSearchHistory(newHistory);
     localStorage.setItem("searchHistory", JSON.stringify(newHistory));
   };
-//   لما أكتب اي حاجة في السيرش ترمي الداتا في أول اتنين و تقفل آخر اتنين 
+
+  // Handle search from history or suggestions
   const handleSearch = (query: string) => {
     setSearchQuery(query);
     saveToHistory(query);
     setShowSearches(false);
     setShowFilter(false);
   };
-//  بنضيف بيها الكلام اللي اتكتب بدون مسافات لسجل البحث 
+
+  // Update search query and save to history if non-empty
   const handleInputChange = (value: string) => {
     setSearchQuery(value);
     if (value.trim()) {
@@ -64,37 +116,22 @@ const SEARCH = () => {
     }
   };
 
-  const filteredProperties = properties.filter(property => {
-    //  بنحول نص البحث ل Lawercase علشان المُقارنة تكون أسهل 
-    const query = searchQuery.toLowerCase();
-    const matchesQuery = !query || 
-      property.title.toLowerCase().includes(query) ||
-      property.location.toLowerCase().includes(query) ||
-      (property.category && property.category.toLowerCase().includes(query));
-//  بنشيل من السعر اي رموز أو حروف غير أرقام أو نُقط ثم بعد كدة بنحوله رقم Float
-    const price = parseFloat(property.price.replace(/[^0-9.]/g, ''));
-    const matchesPrice = (!priceMin || price >= parseFloat(priceMin)) &&
-                        (!priceMax || price <= parseFloat(priceMax));
-//  بنتأكد ان كان العقارعنده تاريخ ولا لا  لو لا هيكون Null و لو آه  بنعمله Object
-    const propertyDate = property.date ? new Date(property.date) : null;
-    const matchesDate = (!dateFrom || !propertyDate || propertyDate >= new Date(dateFrom)) &&
-    (!dateTo || !propertyDate || propertyDate <= new Date(dateTo));
-    return matchesQuery && matchesPrice && matchesDate;
-
-  });
-
+  // Determine if results should be shown
   const showResults = searchQuery.length > 0 || priceMin || priceMax || dateFrom || dateTo;
-//  نقدر نفتح و نقفل ال Filter سواء By Price or Date
+
+  // Toggle filter visibility
   const toggleFilter = () => {
     setShowFilter(!showFilter);
     setShowSearches(false);
   };
-//  نقدر نفتح و نقفل سجل البحث علشان 
+
+  // Toggle search history visibility
   const toggleSearches = () => {
     setShowSearches(!showSearches);
     setShowFilter(false);
   };
-//  علشان نفضي كل الانبوتس عندنا من أول و جديد 
+
+  // Clear all filter values
   const clearAllFilters = () => {
     setPriceMin("");
     setPriceMax("");
@@ -104,7 +141,7 @@ const SEARCH = () => {
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col overflow-x-hidden">
-    {/*  Search input */}
+      {/* Search input */}
       <main className="flex-1 pb-20">
         <div className="w-full px-2 sm:px-4 flex flex-col items-center justify-start pt-20 transition-all duration-300">
           <div className={`w-full ${showResults ? 'max-w-7xl' : 'max-w-2xl'} mx-auto`}>
@@ -122,7 +159,7 @@ const SEARCH = () => {
                 }`}
               />
             </div>
-{/* if  ShoeFilter هيظهر ال Filter Here */}
+            {/* Show filters if toggled */}
             {showFilter && (
               <div className="mt-4 p-6 bg-white border-2 border-blue-500 rounded-2xl shadow-lg animate-in fade-in duration-200">
                 <div className="flex justify-between items-center mb-4">
@@ -136,7 +173,7 @@ const SEARCH = () => {
                 </div>
                 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {/*  Price Range */}
+                  {/* Price Range */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">Price Range</label>
                     <div className="flex gap-2">
@@ -156,28 +193,28 @@ const SEARCH = () => {
                       />
                     </div>
                   </div>
+                  {/* Date Range */}
                   <div>
-                    {/*  DATA Range */}
                     <label className="block text-sm font-medium text-gray-700 mb-2">Date Range</label>
-                  <div className="flex flex-col sm:flex-row gap-2">
-                  <input
-                    type="date"
-                    value={dateFrom}
-                    onChange={(e) => setDateFrom(e.target.value)}
-                    className="w-full sm:w-1/2 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  />
-                  <input
-                    type="date"
-                    value={dateTo}
-                    onChange={(e) => setDateTo(e.target.value)}
-                    className="w-full sm:w-1/2 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  />
-                </div>
+                    <div className="flex flex-col sm:flex-row gap-2">
+                      <input
+                        type="date"
+                        value={dateFrom}
+                        onChange={(e) => setDateFrom(e.target.value)}
+                        className="w-full sm:w-1/2 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      />
+                      <input
+                        type="date"
+                        value={dateTo}
+                        onChange={(e) => setDateTo(e.target.value)}
+                        className="w-full sm:w-1/2 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      />
+                    </div>
                   </div>
                 </div>
               </div>
             )}
-{/*  if Show Result true هيظهرلنا الايتم  اللي منها نقدر نشوف الجُزء بتاع ال */}
+            {/* Show options if no results */}
             {!showResults && (
               <div className="mt-6 text-center">
                 <div className="flex flex-wrap gap-2 sm:gap-4 justify-center px-2 py-2 mb-6">
@@ -205,7 +242,7 @@ const SEARCH = () => {
                     Searches
                   </button>
                 </div>
-{/*  عندنا هنا Cindition rendaring أقدر أظهر المُحتوي اللي فيه لو  فيه داتا قبل كدة و لعرض متفعل  */}
+                {/* Show recent searches if toggled and history exists */}
                 {showSearches && searchHistory.length > 0 && (
                   <div className="mb-6 p-3 sm:p-4 bg-white border-2 border-blue-500 rounded-2xl shadow-lg animate-in fade-in duration-200">
                     <h3 className="text-sm font-semibold text-gray-700 mb-3 text-left">Recent Searches</h3>
@@ -230,13 +267,13 @@ const SEARCH = () => {
                     </div>
                   </div>
                 )}
-        {/*  لو  مفيش اي داتا قبل كدة في ال History و ضغطت علشان أشوف  */}
+                {/* Show message if no search history */}
                 {showSearches && searchHistory.length === 0 && (
                   <div className="mb-6 p-6 bg-white border-2 border-gray-200 rounded-2xl">
                     <p className="text-gray-500 text-sm">No search history yet</p>
                   </div>
                 )}
-        {/*  لو ال Show Searches مش تروو هظهر الأوبشانز أو المُقترحات اللي بيها هسيرش  */}
+                {/* Show popular searches if not showing history */}
                 {!showSearches && (
                   <>
                     <p className="text-gray-500 text-xs sm:text-sm mb-4">Popular searches:</p>
@@ -277,7 +314,7 @@ const SEARCH = () => {
           <div className="max-w-7xl mx-auto px-2 sm:px-4 mt-6">
             <div className="mb-4 flex items-center justify-between">
               <p className="text-gray-600 text-sm">
-                Found {filteredProperties.length} {filteredProperties.length === 1 ? 'property' : 'properties'}
+                Found {properties.length} {properties.length === 1 ? 'property' : 'properties'}
               </p>
               {(priceMin || priceMax || dateFrom || dateTo) && (
                 <button
@@ -290,23 +327,36 @@ const SEARCH = () => {
               )}
             </div>
 
-            {filteredProperties.length > 0 ? (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                {filteredProperties.map(property => (
-                  <PropertyCard
-                    key={property.id}
-                    id={property.id}
-                    title={property.title}
-                    image={property.image}
-                    price={property.price}
-                    location={property.location}
-                    size={property.size}
-                  />
-                ))}
+            {properties.length > 0 ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+                {properties
+                  .filter(property => property.mainImage)
+                  .map(property => (
+                    <PropertyCard
+                      key={property.propertyId}
+                      id={property.propertyId}
+                      title={property.title}
+                      images={property.imageUrl1 ? [property.imageUrl1] : []}
+                      location={property.city}
+                      price={property.price}
+                      description={property.description}
+                      currency={property.currency}
+                      categoryName={property.categoryName}
+                      categorySlug={property.categorySlug}
+                      totalArea={property.totalArea}
+                      viewsCount={property.viewsCount}
+                      publishedAt={property.publishedAt}
+                      ownerName={property.ownerName}
+                      ownerProfileImage={property.ownerProfileImage}
+                      ownerRating={property.ownerRating}
+                      ownerUserId={property.ownerUserId}
+                      fetchProperties={fetchData}
+                    />
+                  ))}
               </div>
             ) : (
               <div className="text-center py-12">
-                <p className="text-gray-500 text-lg">No properties found matching your criteria</p>
+                <p className="text-gray-500 text-lg">No results for search or search results are zero</p>
                 <p className="text-gray-400 text-sm mt-2">Try adjusting your search or filters</p>
               </div>
             )}

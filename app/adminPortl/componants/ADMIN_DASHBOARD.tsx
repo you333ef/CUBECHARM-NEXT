@@ -1,4 +1,7 @@
 "use client"
+import AuthContext from "@/app/providers/AuthContext";
+import axios from "axios";
+import { useContext, useEffect, useState } from "react";
 import {
   BarChart,
   Bar,
@@ -25,17 +28,114 @@ const ADMIN_DASHBOARD = () => {
   ];
   const COLORS = ["#3b82f6", "#64748b", "#475569", "#1e293b", "#0f172a"];
 // 2
-  const stats = [
-    { title: "Total Properties", value: 1000, change: "User" },
-    { title: "Property Listers", value: "50%", change: "This month" },
-    { title: "Site Visitors", value: "3999", change: "Visitor" },
-  ];
+  const [totalProperties, setTotalProperties] = useState<number | null>(null);
+  const [monthlyProperties, setMonthlyProperties] = useState<number | null>(null);
+const [monthlyGrowth, setMonthlyGrowth] = useState<number | null>(null);
+const [currentMonth, setCurrentMonth] = useState<string>("");
+const [totalVisitors, setTotalVisitors] = useState<number | null>(null);
+
+ const stats = [
+  { title: "Total Properties", value: totalProperties ?? "--", change: "User" },
+  { title: "Property Listers", value: monthlyProperties ?? "--", change: currentMonth },
+  { title: "Site Visitors", value: totalVisitors ?? "--", change: "Visitor" },
+];
+
+// 
+
+  const auth = useContext(AuthContext)!;
+  const { baseUrl } = auth;
+ const accessToken =
+    typeof window !== "undefined" ? localStorage.getItem("accessToken") : null;
+  
+
+async function getTotalProperties() {
+  try {
+    const response = await axios.get(
+      baseUrl + "/admin/dashboard/total-properties",
+      {
+        headers: {
+          Authorization: "Bearer " + accessToken,
+        },
+      }
+    );
+
+    return response.data.data.totalProperties;
+  } catch (error) {
+    console.log(error);
+    return null;
+  }
+}
+
+async function getMonthlyProperties() {
+  try {
+    const response = await axios.get(
+      baseUrl + "/admin/dashboard/monthly-properties",
+      {
+        headers: {
+          Authorization: "Bearer " + accessToken,
+        },
+      }
+    );
+
+    const data = response.data.data;
+
+    return {
+      month: data.month,
+      propertiesCount: data.propertiesCount,
+      percentageChange: data.percentageChange,
+    };
+  } catch (error) {
+    console.log(error);
+    return null;
+  }
+}
+async function getVisitors() {
+  try {
+    const response = await axios.get(
+      baseUrl + "/admin/dashboard/overview",
+      {
+        headers: {
+          Authorization: "Bearer " + accessToken,
+        },
+      }
+    );
+
+    const visitorsTotal = response.data.data.visitors?.total;
+    return visitorsTotal ?? null;
+  } catch (error) {
+    console.log("Visitors API error:", error);
+    return null;
+  }
+}
+
+useEffect(() => {
+   if (!baseUrl) return;
+  async function loadDashboardData() {
+    // 1️-Total Properties
+    const total = await getTotalProperties();
+    setTotalProperties(total);
+
+    // 2️- Monthly Properties + Growth + Month
+    const monthlyResult = await getMonthlyProperties();
+
+    if (monthlyResult) {
+      setMonthlyProperties(monthlyResult.propertiesCount);
+      setMonthlyGrowth(monthlyResult.percentageChange);
+      setCurrentMonth(monthlyResult.month);
+    }
+        const visitors = await getVisitors();
+    setTotalVisitors(visitors);
+
+  }
+
+  loadDashboardData();
+}, [baseUrl]);
+
+
 
   return (
     <div className="p-6 min-h-screen bg-gray-50">
-  
       <h1 className="text-2xl font-semibold text-blue-500 mb-6">Dashboard</h1>
-
      {/* 3 */}
       <div className="grid grid-cols-[repeat(auto-fit,minmax(260px,1fr))] gap-6 mb-8">
         {stats.map((item, i) => (
@@ -58,8 +158,7 @@ const ADMIN_DASHBOARD = () => {
         ))}
       </div>
     {/* 4 */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-8 overflow-x-hidden">
-       
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-8 overflow-x-hidden">    
         {/* 5 */}
         <div className="bg-white rounded-xl border border-gray-200 p-5 shadow-sm">
           <h2 className="text-lg font-semibold text-gray-700 mb-4 flex items-center gap-2">
@@ -125,5 +224,4 @@ const ADMIN_DASHBOARD = () => {
     </div>
   );
 };
-
 export default ADMIN_DASHBOARD;

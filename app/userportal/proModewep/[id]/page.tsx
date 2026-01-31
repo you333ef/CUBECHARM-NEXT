@@ -1,225 +1,308 @@
 "use client";
 
-import { useState, Suspense, memo, useCallback, useMemo, lazy } from "react";
+import {
+  useState,
+  Suspense,
+  memo,
+  useMemo,
+  useEffect,
+  useContext,
+} from "react";
 import Image from "next/image";
-import dynamic from "next/dynamic";
-import type { StaticImageData } from "next/image";
+import axios from "axios";
+import { useParams, useRouter } from "next/navigation";
 import PhotoSphereViewer from "../../componants/shared/PhotoSphereViewer";
+import AuthContext from "@/app/providers/AuthContext";
+import ConfirmDeleteModal from '../../../adminPortl/sharedAdmin/DELETE_CONFIRM';
+import PostOptionDialog from "../../activity/componants/PostOptionDialog";
+import { FiMoreVertical } from "react-icons/fi";
 
-
-
-// 2. 
+interface ApiImage {
+  url?: string;
+  is360?: boolean;
+  name?: string;
+  heightLevel?: number;
+}
+interface ApiCell {
+  hasImages: boolean;
+  images: ApiImage[];
+}
+interface Floor {
+  id: number;
+  floorNumber: number;
+  gridCellsX: number;
+  gridCellsY: number;
+  backgroundImageUrl?: string | null;
+  cells: Record<string, ApiCell>;
+  filledCells?: number;
+  ownerId?: string;
+}
 interface CellData {
   id: string;
-  name: string;
-  size: string;
-  area: string;
-  imageUrl: string | StaticImageData;
-  is360: boolean;
+  images: ApiImage[];
 }
-
-// 3. 
-const masterBedroomImg = "/images/hugo-rouquette-8RrDGp_4S9E-unsplash.jpg";
-const bedroom1Img = "/images/tomas-cocacola-1MCdcbJxViE-unsplash.jpg";
-const bedroom2Img = "/images/bedroom3.jpg";
-const bedroom3Img = "/images/Master.jpg";
-const livingRoomImg = "/images/Living_ONe.jpg";
-const bathroom1Img = "/images/Kitchen.jpg";
-const bathroom2Img = "/images/bedroom2.jpg";
-const kitchenImg = "/images/Kitchen2.jpg";
-const Updated_Map = "/images/UpdatedMap.jpg";
-
-// 4.
-const GridCell = memo(({ cellData, onSelect }: { cellData?: CellData; onSelect: () => void }) => {
-  const hasImage = !!cellData?.imageUrl;
-
-  return (
-    <div
-      className={`relative w-10 h-10 border border-border overflow-hidden ${
-        hasImage ? "cursor-pointer transition-shadow hover:shadow-lg" : ""
-      }`}
-      onClick={onSelect}
-    >
-      {!hasImage && <div className="absolute inset-0 bg-blue-500/20" />}
-      {hasImage && <div className="absolute inset-0 bg-black/20" />}
-    </div>
-  );
-});
+/* UI sizes */
+const CELL_SIZE = 40;
+const GridCell = memo(
+  ({ count, hasImage, onClick }: { count: number; hasImage: boolean; onClick: () => void }) => {
+    return (
+      <div
+        onClick={hasImage ? onClick : undefined}
+        style={{ width: CELL_SIZE, height: CELL_SIZE }}
+        className={`relative border transition ${
+          hasImage ? "cursor-pointer bg-black/30 hover:bg-black/40" : "bg-blue-500/20"
+        }`}
+      >
+        {count > 1 && (
+          <div className="absolute top-0 right-0 m-0.5 bg-black/80 text-white text-[10px] px-1 rounded">
+            {count}
+          </div>
+        )}
+      </div>
+    );
+  }
+);
 GridCell.displayName = "GridCell";
-
-// 5.
 const PRO_MODE = () => {
-  const width = 20;
-  const height = 10;
-  const gridBackground = Updated_Map;
+  const auth = useContext(AuthContext)!;
+const { baseUrl, user } = auth;
 
-  // 6.
-  const cells: Record<string, CellData> = {
-    "cell-2-4": { id: "cell-2-4", name: "Master Bedroom", size: "5.0 × 5.0 m", area: "25 m²", imageUrl: masterBedroomImg, is360: false },
-    "cell-3-6": { id: "cell-3-6", name: "Bedroom 1", size: "4.0 × 4.2 m", area: "16.8 m²", imageUrl: bedroom1Img, is360: true },
-    "cell-5-2": { id: "cell-5-2", name: "Bedroom 2", size: "4.0 × 5.0 m", area: "20 m²", imageUrl: bedroom2Img, is360: false },
-    "cell-6-8": { id: "cell-6-8", name: "Bedroom 3", size: "4.0 × 4.1 m", area: "16.4 m²", imageUrl: bedroom3Img, is360: false },
-    "cell-8-5": { id: "cell-8-5", name: "Living Room", size: "5.8 × 6.4 m", area: "37.1 m²", imageUrl: livingRoomImg, is360: false },
-    "cell-10-3": { id: "cell-10-3", name: "Bathroom 1", size: "2.5 × 1.6 m", area: "4 m²", imageUrl: bathroom1Img, is360: false },
-    "cell-11-7": { id: "cell-11-7", name: "Bathroom 2", size: "1.6 × 2.1 m", area: "3.4 m²", imageUrl: bathroom2Img, is360: false },
-    "cell-13-4": { id: "cell-13-4", name: "Kitchen", size: "3.0 × 3.4 m", area: "10.2 m²", imageUrl: kitchenImg, is360: false },
+  const params = useParams();
+  const propertyId = Number(params.id);
+
+  const API_ASSETS_BASE = "http://localhost:5000";
+
+  const [floors, setFloors] = useState<Floor[]>([]);
+  const [selectedCell, setSelectedCell] = useState<{
+    id: string;
+    images: ApiImage[];
+    index: number;
+  } | null>(null);
+
+  const [optionsPost, setOptionsPost] = useState<any>(null);
+  const [isConfirmOpen, setIsConfirmOpen] = useState(false);
+
+  useEffect(() => {
+    if (!propertyId || !baseUrl) return;
+
+    const fetchFloors = async () => {
+      try {
+        const res = await axios.get(`${baseUrl}/properties/${propertyId}/floors`);
+        const all = res.data.data?.floors || [];
+        const nonEmpty = all.filter((f: Floor) => (f.filledCells ?? 0) > 0);
+        const lastFilled = nonEmpty.length ? nonEmpty[nonEmpty.length - 1] : null;
+        setFloors(lastFilled ? [lastFilled] : []);
+        setSelectedCell(null);
+      } catch (err) {
+        console.error("fetchFloors error", err);
+      }
+    };
+
+    fetchFloors();
+  }, [propertyId, baseUrl]);
+
+  const currentFloor = floors[0];
+
+  const buildFullUrl = (url?: string) => {
+    if (!url) return undefined;
+    if (/^https?:\/\//i.test(url)) return url;
+    return `${API_ASSETS_BASE}/${url.replace(/^\//, "")}`;
   };
 
-  // 7. 
-  const [selectedCell, setSelectedCell] = useState<CellData | null>(null);
+  const cellMap = useMemo<Record<string, CellData>>(() => {
+    if (!currentFloor) return {};
+    const map: Record<string, CellData> = {};
+    Object.entries(currentFloor.cells || {}).forEach(([id, cell]) => {
+      if (!cell.hasImages) return;
+      map[id] = {
+        id,
+        images: cell.images.map(img => ({
+          ...img,
+          url: img.url ? buildFullUrl(img.url) : undefined,
+        })),
+      };
+    });
+    return map;
+  }, [currentFloor]);
 
-  // 8. 
-  const handleCellClick = useCallback((cell: CellData) => {
-    setSelectedCell(cell);
-  }, []);
+  const cols = currentFloor?.gridCellsX ?? 0;
+  const rows = currentFloor?.gridCellsY ?? 0;
 
-  // 9.
-  const gridContent = useMemo(() => {
-    const rows = [];
-    for (let row = 0; row < height; row++) {
-      const cellsInRow = [];
-      for (let col = 0; col < width; col++) {
-        const cellId = `cell-${row}-${col}`;
-        const cellData = cells[cellId];
+  const gridWidth = cols * CELL_SIZE;
+  const gridHeight = rows * CELL_SIZE;
 
-        cellsInRow.push(
-          <GridCell
-            key={cellId}
-            cellData={cellData}
-            onSelect={() => cellData && handleCellClick(cellData)}
-          />
-        );
+  const onCellClick = (id: string) => {
+    const cell = cellMap[id];
+    if (!cell) return;
+
+    setSelectedCell(prev => {
+      if (!prev || prev.id !== id) {
+        return { id, images: cell.images, index: 0 };
+      } else {
+        const nextIndex = (prev.index + 1) % prev.images.length;
+        return { id, images: prev.images, index: nextIndex };
       }
-      rows.push(<div key={`row-${row}`} className="flex">{cellsInRow}</div>);
-    }
-    return rows;
-  }, [handleCellClick]);
+    });
+  };
 
-  // 10
-  const renderNumberLabels = () =>
-    Array.from({ length: Math.max(width, height) }, (_, i) => (
-      <div
-        key={i}
-        className="w-10 h-10 border border-border bg-[hsl(var(--grid-width))] flex items-center justify-center text-sm font-medium hover:scale-105 transition-transform"
-      >
-        {i + 1}
+  const grid = useMemo(() => {
+    return Array.from({ length: rows }).map((_, row) => (
+      <div key={row} className="flex">
+        {Array.from({ length: cols }).map((_, col) => {
+          const id = `cell-${row}-${col}`;
+          const cell = cellMap[id];
+          const hasImage = !!cell;
+          const count = cell?.images.length ?? 0;
+          return (
+            <GridCell
+              key={id}
+              count={count}
+              hasImage={hasImage}
+              onClick={() => onCellClick(id)}
+            />
+          );
+        })}
       </div>
     ));
+  }, [rows, cols, cellMap]);
 
-  // 11.
-  const backgroundStyle = {
-    backgroundImage: gridBackground ? `url(${gridBackground})` : "none",
-    backgroundSize: "contain",
-    backgroundPosition: "center",
-    backgroundRepeat: "no-repeat",
-  } as const;
+const  navi=  useRouter()
+//  Delete  Floor Plane 
+ const FunDeleteFloor = async () => {
+  if (!currentFloor?.id) {
+    console.error("floorId not found");
+    return;
+  }
+  try {
+    const response = await axios.delete(
+      `${baseUrl}/properties/${propertyId}/floors/${currentFloor.id}/cancel`, {
+        headers: { Authorization: `Bearer ${localStorage.getItem("accessToken")}` },
+      }
+    
+    );
+
+    console.log("Floor deleted:", response.data);
+    navi.push(`/userportal/property/${propertyId}`)
+  } catch (error) {
+    console.error("Delete floor error:", error);
+  }
+};
+
+  const handleOptionDelete = () => {
+    setIsConfirmOpen(true);
+    setOptionsPost(null);
+  };
+
+ const isOwner =
+  !!user?.sub &&
+  !!currentFloor?.ownerId &&
+  user.sub === currentFloor.ownerId;
+
+
+  const handleConfirmTrue = async () => {
+    await FunDeleteFloor();
+    setIsConfirmOpen(false);
+    setFloors([]);
+  };
 
   return (
     <div className="bg-[#f7f9fc] min-h-screen">
-      <main className="max-w-screen-lg mx-auto p-4 md:p-6 flex flex-col gap-8">
-      
-        <section className="rounded-2xl shadow-lg p-6 border bg-white">
-          <div className="rounded-xl overflow-hidden mt-4">
-            <Suspense fallback={<div className="h-[600px] bg-gray-100 animate-pulse rounded-xl" />}>
-              {selectedCell ? (
-                selectedCell.is360 ? (
-                  // 12.
-                  <PhotoSphereViewer
-                    src={typeof selectedCell.imageUrl === "string" ? selectedCell.imageUrl : selectedCell.imageUrl.src}
-                    
-                    
-                  />
-                ) : (
-                  // 13.
-                  <Image
-                    src={selectedCell.imageUrl}
-                    alt={selectedCell.name}
-                    width={1200}
-                    height={600}
-                    className="w-full h-[600px] object-contain bg-black rounded-xl"
-                    priority={false}
-                    placeholder="blur"
-                    blurDataURL="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAA..." // optional: add real base64 if you want
-                  />
-                )
+      <main className="max-w-screen-lg mx-auto p-6 space-y-8">
+        <section className="bg-white rounded-2xl shadow p-6">
+          <Suspense fallback={<div className="h-[600px]" />}>
+            {selectedCell ? (
+              selectedCell.images[selectedCell.index]?.is360 ? (
+                <PhotoSphereViewer src={selectedCell.images[selectedCell.index].url!} />
               ) : (
-                // 14
-                <div className="h-[600px] w-full rounded-xl bg-gradient-to-br from-blue-50 to-indigo-100 flex flex-col items-center justify-center text-center px-8">
-                  <div className="bg-white/90 backdrop-blur-sm p-10 rounded-3xl shadow-2xl max-w-md">
-                    <div className="w-20 h-20 bg-blue-600 rounded-2xl mx-auto mb-6 flex items-center justify-center">
-                      <svg className="w-12 h-12 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
-                      </svg>
-                    </div>
-                    <h3 className="text-3xl font-light text-gray-800 mb-3">
-                     Choose room  to explore
-                    </h3>
-                    
-                  </div>
-                </div>
-              )}
-            </Suspense>
-          </div>
+                <Image
+                  src={selectedCell.images[selectedCell.index].url!}
+                  alt={selectedCell.images[selectedCell.index].name || "room"}
+                  width={1200}
+                  height={600}
+                  unoptimized
+                  className="w-full h-[600px] object-contain bg-black rounded-xl"
+                />
+              )
+            ) : (
+              <div className="h-[600px] flex items-center justify-center text-gray-500">
+                Select a cell
+              </div>
+            )}
+          </Suspense>
         </section>
 
-        {/* Floor Plan Section */}
-        <section className="rounded-2xl shadow-lg p-6 border bg-white">
-          <h2 className="text-2xl md:text-3xl font-bold text-center text-[#3b82f6] mb-6">
-            Floor Plan
-          </h2>
+        <section className="bg-white rounded-2xl shadow p-6 space-y-4">
+          <div className="flex justify-between items-center">
+            <h2 className="text-2xl font-bold text-blue-500">Plane Floor</h2>
+          {isOwner && (
+  <div 
+    onClick={() =>
+        setOptionsPost({
+          id: currentFloor?.id,
+          isOwner: true,
+        })
+      }
+  
+  className="p-2 rounded-full hover:bg-gray-200 transition">
+    <FiMoreVertical
+      size={18}
+      className="text-gray-600"
+    
+    />
+  </div>
+)}
 
-          <div className="overflow-auto">
-            <div className="mx-auto flex flex-col items-start min-w-fit">
-              <div className="flex mb-0 pl-10 pr-10">{renderNumberLabels()}</div>
-
-              <div className="flex">
-                <div className="flex flex-col mr-0">
-                  {Array.from({ length: height }, (_, i) => (
-                    <div
-                      key={`left-${i}`}
-                      className="w-10 h-10 border border-border bg-[hsl(var(--grid-height))] flex items-center justify-center text-sm font-medium hover:scale-105 transition-transform"
-                    >
-                      {i + 1}
-                    </div>
-                  ))}
-                </div>
-
-                <div
-                  className="relative bg-muted/30 rounded-2xl border-2 border-dashed border-border overflow-hidden min-w-[800px] min-h-[400px]"
-                  style={backgroundStyle}
-                >
-                  <div className="flex flex-col p-0">{gridContent}</div>
-                </div>
-
-                <div className="flex flex-col ml-0">
-                  {Array.from({ length: height }, (_, i) => (
-                    <div
-                      key={`right-${i}`}
-                      className="w-10 h-10 border border-border bg-[hsl(var(--grid-height))] flex items-center justify-center text-sm font-medium hover:scale-105 transition-transform"
-                    >
-                      {i + 1}
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              <div className="flex mt-0 pl-10 pr-10">{renderNumberLabels()}</div>
-            </div>
           </div>
 
-          {/* Room info card */}
-          {selectedCell && (
-            <div className="mt-6 bg-blue-200 p-4 rounded-lg text-center">
-              <h2 className="text-2xl md:text-3xl font-bold text-black mb-2">The area of the unit</h2>
-              <p className="text-base md:text-lg text-gray-800 whitespace-nowrap">
-                {selectedCell.size} • {selectedCell.area}
-              </p>
+          <div className="flex justify-center">
+            <div
+              className="relative border-2 border-dashed rounded-xl"
+              style={{
+                width: gridWidth,
+                height: gridHeight,
+              }}
+            >
+              {currentFloor?.backgroundImageUrl && (
+                <Image
+                  src={`${API_ASSETS_BASE}/${currentFloor.backgroundImageUrl.replace(/^\//, "")}`}
+                  alt="Floor Plan"
+                  fill
+                  unoptimized
+                  className="object-contain"
+                />
+              )}
+
+              <div className="absolute inset-0">{grid}</div>
             </div>
-          )}
+          </div>
         </section>
       </main>
+
+      {optionsPost && (
+        <PostOptionDialog
+          open={!!optionsPost}
+          postId={optionsPost.id}
+          username=""
+          isOwner={isOwner}
+          onClose={() => setOptionsPost(null)}
+          onDelete={handleOptionDelete}
+         
+          
+    showUpdate={true}     
+          onBlock={() => {}}
+          onReport={() => {}}
+        />
+      )}
+
+      {isConfirmOpen && (
+        <ConfirmDeleteModal
+          DeleteTrue={handleConfirmTrue}
+          name="Floor Plane"
+          actionType="delete"
+          onCancel={() => setIsConfirmOpen(false)}
+        />
+      )}
     </div>
   );
 };
-
 export default PRO_MODE;

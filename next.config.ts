@@ -10,8 +10,11 @@ const nextConfig: NextConfig = {
       "images.unsplash.com",
       "i.pravatar.cc",
       "cf.bstatic.com",
+      "localhost"
     ],
+    
   },
+
 };
 
 export default nextConfig;

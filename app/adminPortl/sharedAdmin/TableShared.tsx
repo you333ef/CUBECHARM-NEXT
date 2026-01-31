@@ -40,7 +40,7 @@ const TableShared = <T extends Record<string, any>>({
     `tablehead-${i}-${String(s || "").toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-_]/g, "")}`;
 const Location = usePathname();
 
-  const LocationContain = Location.includes('ADMIN_LAYOUT/REPORTS');
+  const LocationContain = Location.includes('/adminPortl/reports');
 
   return (
     <div className="w-full">

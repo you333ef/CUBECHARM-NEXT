@@ -21,7 +21,7 @@ const TopNavbar = () => {
   // Helper to check current route
   const isActive = (path: string) => pathname === path;
   const inSearchPage = pathname?.includes('/userportal/search');
-  const inPremiumPage = pathname?.includes('/Premieum_Plane');
+  const inPremiumPage = pathname?.includes('/PremiamPlane');
   const inUpdatesPage = pathname?.includes('/LAST_Updates_Container');
 
   // Redirect to search page when input is focused (desktop behavior)

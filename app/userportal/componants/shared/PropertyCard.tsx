@@ -1,87 +1,160 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useContext, useState } from "react";
 import { IoMdHeartEmpty, IoMdHeart, IoMdStar } from "react-icons/io";
 import { GrLocation } from "react-icons/gr";
 import { BsThreeDotsVertical } from "react-icons/bs";
 import { MdChevronLeft, MdChevronRight } from "react-icons/md";
 import { IoEyeOutline } from "react-icons/io5";
-import Image from "next/image";
+
 import { useRouter } from "next/navigation";
+import AuthContext from "@/app/providers/AuthContext";
+import axios from "axios";
+import { toast } from "sonner";
+import ReportModal from "../../componants/shared/ReportModal";
+import ConfirmDeleteModal from '../../../adminPortl/sharedAdmin/DELETE_CONFIRM';
+import { usePropertyCardActions } from "../hooks/usePropertyCardActions";
 
 interface PropertyCardProps {
   id: number;
-  image: string;
+  images: string[];
   title: string;
   description?: string;
   isFavorite?: boolean;
   price: string;
   location: string;
-  size: string | number;
-   onRemoveFavorite?: () => void;
+  currency: string;
+  categoryName: string;
+  categorySlug: string;
+  totalArea: string | number;
+  viewsCount: string | number;
+  publishedAt: string;
+   imageUrl1?: string;
+  ownerName: string;
+  ownerProfileImage: string;
+  ownerRating: number;
+  ownerUserId: string;
+  onRemoveFavorite?: () => void;
+  fetchProperties?:any
+}
+interface ActionItem {
+  label: string;
+  onClick: (id: number) => void;
+  danger?: boolean;
 }
 
 const PropertyCard: React.FC<PropertyCardProps> = ({
   id,
-  image,
+  images,
   title,
+  fetchProperties,
   description,
+  isFavorite: propIsFavorite,
   price,
   location,
-  size,
-    onRemoveFavorite,
+  currency,
+  categoryName,
+  categorySlug,
+  totalArea,
+  viewsCount,
+  publishedAt,
+  ownerName,
+  ownerProfileImage,
+  ownerRating,
+  ownerUserId,
+  onRemoveFavorite,
 }) => {
-  const [isFavorite, setIsFavorite] = useState(false);
-  const [showModal, setShowModal] = useState(false);
+  const [internalFavorite, setInternalFavorite] = useState(false);
+  const isFavorite = propIsFavorite !== undefined ? propIsFavorite : internalFavorite;
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const router = useRouter();
+  const auth = useContext(AuthContext)!;
+  const { baseUrl } = auth;
+  const BASE_URL = "http://localhost:5000";
+  const accessToken =
+    typeof window !== "undefined" ? localStorage.getItem("accessToken") : null;
 
-  const images = [image, image];
+  const currentUserId = auth.user?.sub;
+  const isOwner = currentUserId == ownerUserId;
+
+  // Get action logic from hook
+  const {
+    showModal,
+    setShowModal,
+    showReportModal,
+    setShowReportModal,
+    toggleModal,
+    isDeleteModalOpen,
+    itemToDelete,
+    confirmDelete,
+    cancelDelete,
+    isBlockModalOpen,
+    userToBlock,
+    confirmBlock,
+    cancelBlock,
+    handleSubmitReport,
+    actionsToShow,
+  } = usePropertyCardActions({
+    propertyId: id,
+    ownerUserId,
+    isOwner,
+    ownerName,
+    fetchProperties,
+    baseUrl,
+    accessToken: accessToken,
+    router,
+  });
+
+  const formattedImages = (images ?? [])
+  .filter(Boolean)
+  .map(img =>
+    img.startsWith("http") ? img : `${BASE_URL}/${img}`
+  );
+  const hasSlider = formattedImages.length > 1;
 
   const handleCardClick = () => {
     router.push(`/userportal/property/${id}`);
-  };
-
-  const handleFavoriteClick = (e: React.MouseEvent) => {
+  }
+  const handleFavoriteClick = async (e: React.MouseEvent, propertyId: number) => {
     e.stopPropagation();
-    setIsFavorite(!isFavorite);
-  };
+    if (!accessToken) return;
 
-  const toggleModal = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    setShowModal(!showModal);
+    try {
+      if (propIsFavorite && onRemoveFavorite) {
+        onRemoveFavorite();
+        return;
+      }
+
+      if (!isFavorite) {
+        const res = await axios.post(
+          `${baseUrl}/favourite/property/${propertyId}`,
+          {},
+          { headers: { Authorization: `Bearer ${accessToken}` } }
+        );
+        if (res.data?.success && propIsFavorite === undefined) {
+          setInternalFavorite(true);
+        }
+      } else {
+        const res = await axios.delete(
+          `${baseUrl}/favourite/property/${propertyId}`,
+          { headers: { Authorization: `Bearer ${accessToken}` } }
+        );
+        if (res.data?.success && propIsFavorite === undefined) {
+          setInternalFavorite(false);
+        }
+      }
+    } catch {}
   };
 
   const handlePrevImage = (e: React.MouseEvent) => {
     e.stopPropagation();
-    setCurrentImageIndex((prev) => (prev === 0 ? images.length - 1 : prev - 1));
+    setCurrentImageIndex((prev) => (prev === 0 ? formattedImages.length - 1 : prev - 1));
   };
 
   const handleNextImage = (e: React.MouseEvent) => {
     e.stopPropagation();
-    setCurrentImageIndex((prev) => (prev === images.length - 1 ? 0 : prev + 1));
+    setCurrentImageIndex((prev) => (prev === formattedImages.length - 1 ? 0 : prev + 1));
   };
-
-  const handleCopyLink = async (e: React.MouseEvent) => {
-    e.stopPropagation();
-    const url = `${window.location.origin}/HomeList/property/${id}`;
-    try {
-      await navigator.clipboard.writeText(url);
-      alert("Link copied to clipboard!");
-    } catch (err) {
-      console.error("Failed to copy link:", err);
-    }
-    setShowModal(false);
-  };
-
-  const modalActions = [
-    { label: "Report", onClick: () => { console.log("Report"); setShowModal(false); } },
-    { label: "Unfollow", onClick: () => { console.log("Unfollow"); setShowModal(false); } },
-    { label: "Block User", onClick: () => { console.log("Block"); setShowModal(false); }, danger: true },
-    { label: "Copy Link", onClick: handleCopyLink },
-    { label: "Share", onClick: () => { console.log("Share"); setShowModal(false); } },
-    { label: "About This User", onClick: () => { console.log("About user"); setShowModal(false); } },
-  ];
 
   return (
     <>
@@ -89,15 +162,29 @@ const PropertyCard: React.FC<PropertyCardProps> = ({
         onClick={handleCardClick}
         className="bg-white rounded-xl shadow-sm hover:shadow-lg transition-all duration-300 overflow-hidden max-w-md border border-gray-100 cursor-pointer group"
       >
-        {/* Header: User Info + Menu */}
         <div className="p-3 pb-2 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center text-white font-bold text-lg">
-              Y
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center text-white font-bold text-lg overflow-hidden">
+              {ownerProfileImage ? (
+                <img
+                  src={`${BASE_URL}/${ownerProfileImage}`}
+                  alt={ownerName}
+                  width={40}
+                  height={40}
+                  className="object-cover"
+                  
+                />
+              ) : (
+                ownerName?.charAt(0).toUpperCase() || "U"
+              )}
             </div>
+
             <div>
-              <p className="text-sm font-semibold text-gray-800">Yousef Khaled</p>
-              <p className="text-xs text-gray-500">Front End Developer</p>
+              <p className="text-sm font-semibold text-gray-800">{ownerName}</p>
+           
+              <p className="text-xs text-gray-500">
+                Published: {new Date(publishedAt).toLocaleDateString("en-US")}
+              </p>
             </div>
           </div>
           <button
@@ -108,47 +195,49 @@ const PropertyCard: React.FC<PropertyCardProps> = ({
           </button>
         </div>
 
-        {/* Image Slider */}
         <div className="relative">
-          <Image
-            src={images[currentImageIndex]}
+          <img
+            src={formattedImages[currentImageIndex] || "/placeholder.jpg"}
             alt={title}
             width={600}
             height={400}
             className="w-full h-64 object-cover"
-            priority={currentImageIndex === 0}
+            // priority={currentImageIndex === 0}
+            // unoptimized
           />
 
-          {/* Navigation Arrows */}
-          <button
-            onClick={handlePrevImage}
-            className="absolute left-3 top-1/2 -translate-y-1/2 bg-white/90 hover:bg-white rounded-full p-1.5 opacity-0 group-hover:opacity-100 transition-all shadow-lg"
-          >
-            <MdChevronLeft size={28} className="text-gray-800" />
-          </button>
-          <button
-            onClick={handleNextImage}
-            className="absolute right-3 top-1/2 -translate-y-1/2 bg-white/90 hover:bg-white rounded-full p-1.5 opacity-0 group-hover:opacity-100 transition-all shadow-lg"
-          >
-            <MdChevronRight size={28} className="text-gray-800" />
-          </button>
+          {hasSlider && (
+            <>
+              <button
+                onClick={handlePrevImage}
+                className="absolute left-3 top-1/2 -translate-y-1/2 bg-white/90 hover:bg-white rounded-full p-1.5 opacity-0 group-hover:opacity-100 transition-all shadow-lg"
+              >
+                <MdChevronLeft size={28} className="text-gray-800" />
+              </button>
 
-          {/* Dots Indicator */}
-          <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-1.5">
-            {images.map((_, index) => (
-              <div
-                key={index}
-                className={`transition-all duration-300 rounded-full ${
-                  index === currentImageIndex
-                    ? "bg-white w-5 h-1.5"
-                    : "bg-white/60 w-1.5 h-1.5"
-                }`}
-              />
-            ))}
-          </div>
+              <button
+                onClick={handleNextImage}
+                className="absolute right-3 top-1/2 -translate-y-1/2 bg-white/90 hover:bg-white rounded-full p-1.5 opacity-0 group-hover:opacity-100 transition-all shadow-lg"
+              >
+                <MdChevronRight size={28} className="text-gray-800" />
+              </button>
+
+              <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-1.5">
+                {formattedImages.map((_, index) => (
+                  <div
+                    key={index}
+                    className={`transition-all duration-300 rounded-full ${
+                      index === currentImageIndex
+                        ? "bg-white w-5 h-1.5"
+                        : "bg-white/60 w-1.5 h-1.5"
+                    }`}
+                  />
+                ))}
+              </div>
+            </>
+          )}
         </div>
 
-        {/* Content */}
         <div className="p-3 space-y-3">
           <div>
             <p className="text-sm text-gray-700 line-clamp-2 leading-relaxed">
@@ -170,18 +259,20 @@ const PropertyCard: React.FC<PropertyCardProps> = ({
               {title}
             </h3>
             <button
-              onClick={handleFavoriteClick}
+              onClick={(e) => handleFavoriteClick(e, id)}
               className="p-1 hover:scale-110 transition-transform"
             >
               {isFavorite ? (
-                <IoMdHeart className="text-red-500" size={26} />
+                <IoMdHeart size={26} className="text-red-500 cursor-pointer" />
               ) : (
-                <IoMdHeartEmpty className="text-red-500" size={26} />
+                <IoMdHeartEmpty size={26} className="text-red-500 cursor-pointer" />
               )}
             </button>
           </div>
 
-          <p className="text-xl font-bold text-gray-900">{price}</p>
+          <p className="text-xl font-bold text-gray-900">
+            {price} {currency}
+          </p>
 
           <div className="flex items-center justify-between text-sm">
             <div className="flex items-center gap-1.5 text-gray-600">
@@ -196,12 +287,14 @@ const PropertyCard: React.FC<PropertyCardProps> = ({
 
           <div className="flex items-center justify-between text-xs text-gray-500">
             <div className="flex gap-4">
-              <span>Apartment</span>
-              <span>{size} m²</span>
+              <span>
+                {categoryName} {categorySlug}
+              </span>
+              <span>{totalArea} m²</span>
             </div>
             <div className="flex items-center gap-1">
               <IoEyeOutline size={15} />
-              <span>4.2K</span>
+              <span>{viewsCount}</span>
             </div>
           </div>
 
@@ -209,42 +302,53 @@ const PropertyCard: React.FC<PropertyCardProps> = ({
         </div>
       </div>
 
-      {/* Modal */}
       {showModal && (
         <div
-          className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4"
+          className="fixed inset-0 bg-black/60 flex items-center justify-center z-50"
           onClick={() => setShowModal(false)}
         >
           <div
-            className="bg-white rounded-3xl w-full max-w-sm shadow-2xl animate-in fade-in zoom-in duration-200"
+            className="bg-white rounded-3xl w-full max-w-sm p-4"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="p-4 pb-2 space-y-2">
-              {modalActions.map((action) => (
-                <button
-                  key={action.label}
-                  onClick={action.onClick}
-                  className={`w-full text-center py-3.5 rounded-xl font-medium transition-all ${
-                    action.danger
-                      ? "text-red-600 hover:bg-red-50 border border-red-200"
-                      : "text-gray-800 hover:bg-gray-50 border border-gray-200"
-                  }`}
-                >
-                  {action.label}
-                </button>
-              ))}
-            </div>
-            <div className="px-6 pb-6">
+            {actionsToShow.map((action) => (
               <button
-                onClick={() => setShowModal(false)}
-                className="w-full py-3.5 bg-gray-100 hover:bg-gray-200 rounded-xl font-semibold text-gray-800 transition-all"
+                key={action.label}
+               onClick={() => action.onClick(id)}
+                className={`w-full py-3 rounded-xl ${
+                  action.danger ? "text-red-600" : "text-gray-800"
+                }`}
               >
-                Cancel
+                {action.label}
               </button>
-            </div>
+            ))}
           </div>
         </div>
       )}
+
+      <ReportModal
+        isOpen={showReportModal}
+        onClose={() => setShowReportModal(false)}
+        onSubmit={handleSubmitReport}
+        reportId={id}
+      />
+   {isDeleteModalOpen && itemToDelete !== null && (
+  <ConfirmDeleteModal
+    actionType="delete"
+    name="Appartment"
+    DeleteTrue={() => confirmDelete(itemToDelete)}
+    onCancel={cancelDelete}
+  />
+)}
+
+{isBlockModalOpen && userToBlock && (
+  <ConfirmDeleteModal
+    actionType="block"
+    name={ownerName}
+    DeleteTrue={() => confirmBlock(userToBlock)}
+    onCancel={cancelBlock}
+  />
+)}
     </>
   );
 };

@@ -9,7 +9,8 @@ import {
   FaTimesCircle,
   FaFlag,
 } from "react-icons/fa";
-import { MdDashboard, MdOutlinePendingActions, MdSettings } from "react-icons/md";
+
+import { MdDashboard, MdAutoStories, MdSettings } from "react-icons/md";
 import ADMIN_Nav from "./componants/ADMIN_Nav";
 import ADMIN_SIDEBAR, { MenuItem } from "./componants/ADMIN_SIDEPAR";
 import ProtectedRootAdmin from "../providers/ProtectedrootAdmin";
@@ -27,6 +28,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
     { name: "Clients", icon: <FaUsers />, path: "/adminPortl/clients_info" },
     { name: "CateOverview", icon: <MdDashboard />, path: "/adminPortl/cateoverview" },
      { name: "CateManegment", icon: <MdDashboard />, path: "/adminPortl/CategoriesManegment" },
+       { name: "Stories Manegment", icon: <MdAutoStories  />, path: "/adminPortl/StoriesManeg" },
     // {
     //   name: "Posts",
     //   icon: <MdOutlinePendingActions />,
@@ -39,12 +41,10 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
     { name: "Reports", icon: <FaFlag />, path: "/adminPortl/reports" },
     { name: "Settings", icon: <MdSettings />, path: "/adminPortl/settings" },
   ]);
-
   return (
     <div className="flex flex-col min-h-screen">
       {/* 3 */}
       <ADMIN_Nav toggleSidebar={() => setOpen(!open)} />
-
       {/* 4*/}
       <div className="flex flex-1">
         {/*5 */}
@@ -54,7 +54,6 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
           menuItems={menuItems}
           setMenu={setMenu}
         />
-
         {/* 6 */}
         <main className="flex-1 p-6 bg-gray-50 overflow-y-auto">
             <ProtectedRootAdmin> {children}</ProtectedRootAdmin>

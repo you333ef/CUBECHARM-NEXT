@@ -1,65 +1,92 @@
 "use client";
 
-import Image from "next/image";
-import { profileData } from "../../../utils/stories";
+import { useContext } from "react";
 import { usePathname } from "next/navigation";
-
-// (1)
-type Story = {
+import axios from "axios";
+import { toast } from "sonner";
+import AuthContext from "@/app/providers/AuthContext";
+import { Pencil } from "lucide-react"
+/* ---------- Types ---------- */
+type Slide = {
   id: number;
-  images: { src: string }[];
-  label?: string;
-  seen?: boolean; // (2) 
+  mediaUrl: string;
 };
 
-export default function StoriesProfilee() {
-  const openStory = (story: Story) => {
-    // (3) 
-    window.dispatchEvent(new CustomEvent("openStory", { detail: story }));
-  };
+type Story = {
+  id: number;
+  hasViewed: boolean;
+  slides: Slide[];
+  onStoryClick?: () => void;
+};
+
+export default function StoriesProfilee({
+  stories,
+  setStories,
+
+}: {
+  stories: Story[];
+  setStories: React.Dispatch<React.SetStateAction<Story[]>>;
+}) {
+  const { baseUrl } = useContext(AuthContext)!;
+
+  const accessToken =
+    typeof window !== "undefined"
+      ? localStorage.getItem("accessToken")
+      : null;
 
   const pathname = usePathname();
- const isowner=pathname.includes("/userportal/profilee") 
-  
+  const isOwner = pathname.includes("/userportal/profilee");
 
+  const BaseUrlToImage = "http://localhost:5000";
+
+  const deleteStory = async (storyId: number) => {
+    try {
+      await axios.delete(`${baseUrl}/stories/${storyId}`, {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
+      toast.success("Story deleted");
+      setStories((prev) => prev.filter((s) => s.id !== storyId));
+    } catch {
+      toast.error("Failed to delete story");
+    }
+  };
+  const openStory = (story: Story) => {
+    window.dispatchEvent(new CustomEvent("openStory", { detail: story }));
+  };
+if (!Array.isArray(stories) || stories.length === 0) return null;
   return (
-    <div
-      className={`flex gap-3 justify-start mx-auto overflow-x-auto py-4 px-2 scrollbar-hide
-      ${isowner ? "max-w-3xl" : ""}
-    `}
-    >
-      {profileData.stories.map((story: any) => {
-        const firstImage = story.images[0]?.src; // (5) 
-        const isSeen = story?.seen; // (6)
+    <div className={`flex gap-3 overflow-x-auto py-4 px-2 scrollbar-hide ${isOwner ? "max-w-3xl mx-auto" : ""}`}>
+
+
+
+      {stories.map((story) => {
+        const firstSlide = story.slides[0];
+        if (!firstSlide) return null;
+
+
 
         return (
-          <button
-            key={story.id}
-            onClick={() => openStory(story)} // (7) 
-            className="flex flex-col items-center gap-2 flex-shrink-0 group"
-          >
-            <div
-              className={`p-[2px] rounded-xl transition-all duration-300 ${
-                isSeen ? "bg-gray-300" : "bg-blue-500" // (8)
-              }`}
-            >
-              <div className="bg-white p-1 rounded-xl">
-                <div className="w-16 h-16 md:w-20 md:h-20 rounded-xl overflow-hidden ring-2 ring-white">
-                  <Image
-                    src={firstImage}
-                    alt="Story" // (9)
-                    width={80}
-                    height={80}
-                    className="w-full h-full object-cover rounded-xl"
-                  />
+          <div key={story.id} className="relative flex-shrink-0">
+            <button onClick={() => openStory(story)} className="flex flex-col items-center gap-2">
+              <div className={`p-[2px] rounded-xl ${story.hasViewed ? "bg-gray-300" : "bg-blue-500"}`}>
+                <div className="bg-white p-1 rounded-xl">
+                  <div className="w-16 h-16 md:w-20 md:h-20 rounded-xl overflow-hidden">
+                    <img
+                      src={`${BaseUrlToImage}${firstSlide.mediaUrl}`}
+                      alt="Story"
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
                 </div>
               </div>
-            </div>
+              <span className="text-xs text-gray-700 truncate max-w-20">Album .. </span>
+            </button>
 
-            <span className="text-xs font-medium text-gray-700 max-w-20 truncate">
-              {story?.label || `User ${story.id}`} {/* (10) */}
-            </span>
-          </button>
+
+           
+     
+
+          </div>
         );
       })}
     </div>

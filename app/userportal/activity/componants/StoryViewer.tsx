@@ -1,3 +1,5 @@
+
+//   مش هي بتاعتنا 
 "use client";
 
 import { useEffect, useState, useCallback, useRef } from "react";
@@ -5,67 +7,71 @@ import { Swiper, SwiperSlide } from "swiper/react";
 import { Autoplay } from "swiper/modules";
 import "swiper/css";
 
-import Image from "next/image";
-import { profileData } from "../../../utils/stories";
-
 import { usePathname } from "next/navigation";
 
-type Story = typeof profileData.stories[0];
-type StoryImage = Story["images"][0];
+/* ---------- Types ---------- */
+type Slide = {
+  id: number;
+  mediaUrl: string;
+  caption?: string | null;
+  linkUrl?: string | null;
+  duration: number;
+};
+
+type Story = {
+  id: number;
+  slides: Slide[];
+};
+
+const BASE_MEDIA_URL = "http://localhost:5000";
 
 export default function StoryViewer() {
-  const pathname = usePathname();
 
-  const swiperRef = useRef<any>(null); 
-  // (1) 
+
+
+
+
+  useEffect(() => {
+  setIsOpen(false);
+  setSlides([]);
+  setCurrentIndex(0);
+}, []);
+
+  const pathname = usePathname();
+  const swiperRef = useRef<any>(null);
 
   const [isOpen, setIsOpen] = useState(false);
-  const [allImages, setAllImages] = useState<StoryImage[]>([]); 
-  // (3)
-
-  const [startIndex, setStartIndex] = useState(0); 
-  // (4)
-
+  const [slides, setSlides] = useState<Slide[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
 
   const closeViewer = useCallback(() => {
     setIsOpen(false);
-    document.body.style.overflow = "unset"; 
-    // (5) 
+    setSlides([]);
+    setCurrentIndex(0);
+    document.body.style.overflow = "unset";
   }, []);
 
   const handleOpenStory = useCallback((e: Event) => {
     const story = (e as CustomEvent<Story>).detail;
 
-    // (6) 
-    let previousCount = 0;
-    for (const s of profileData.stories) {
-      if (s.id === story.id) break;
-      previousCount += s.images.length;
+    if (!story || !story.slides || story.slides.length === 0) {
+      return;
     }
 
-    // (7) 
-    const flattened = profileData.stories.flatMap((s) => s.images);
-    setAllImages(flattened);
-
-    setStartIndex(previousCount);
-    setCurrentIndex(previousCount);
-
-    // (8) 
+    setSlides(story.slides);
+    setCurrentIndex(0);
     setIsOpen(true);
-    document.body.style.overflow = "hidden"; 
+    document.body.style.overflow = "hidden";
   }, []);
 
   useEffect(() => {
     window.addEventListener("openStory", handleOpenStory as EventListener);
     return () => {
       window.removeEventListener("openStory", handleOpenStory as EventListener);
-      document.body.style.overflow = "unset"; 
-      // (9) 
+      document.body.style.overflow = "unset";
     };
   }, [handleOpenStory]);
 
-  // (10) 
   useEffect(() => {
     if (!isOpen) return;
 
@@ -79,19 +85,16 @@ export default function StoryViewer() {
     return () => window.removeEventListener("keydown", handleKey);
   }, [isOpen, closeViewer]);
 
-  // (11) 
   useEffect(() => {
-    if (isOpen && currentIndex >= allImages.length - 1) {
+    if (isOpen && currentIndex >= slides.length - 1) {
       const t = setTimeout(closeViewer, 800);
       return () => clearTimeout(t);
     }
-  }, [currentIndex, allImages.length, isOpen, closeViewer]);
+  }, [currentIndex, slides.length, isOpen, closeViewer]);
 
-  // (12) 
-  if (!isOpen || allImages.length === 0) return null;
+  if (!isOpen || slides.length === 0) return null;
 
   const isProfilePage = pathname === "/userportal/profilee";
-  // (13) 
 
   return (
     <div className="fixed inset-0 bg-black z-[99999] flex items-center justify-center">
@@ -100,51 +103,56 @@ export default function StoryViewer() {
         className="absolute top-6 right-6 z-50 text-white text-5xl font-light bg-black/50 hover:bg-black/70 w-14 h-14 rounded-full flex items-center justify-center"
       >
         ×
-        {/* (14) */}
       </button>
 
       <Swiper
-        initialSlide={startIndex}
         modules={[Autoplay]}
-        autoplay={{ delay: 4000, disableOnInteraction: false, pauseOnMouseEnter: true }}
+        autoplay={{
+          delay: slides[currentIndex]?.duration
+            ? slides[currentIndex].duration * 1000
+            : 4000,
+          disableOnInteraction: false,
+        }}
         speed={600}
         loop={false}
         className="w-full h-full"
-        onSlideChange={(s) => setCurrentIndex(s.activeIndex)} 
-        // (15)
-
+        onSlideChange={(s) => setCurrentIndex(s.activeIndex)}
         onSwiper={(s) => (swiperRef.current = s)}
-
-        
-    
-
       >
-        {/* (16) */}
-        {allImages.map((img, i) => (
-          <SwiperSlide key={i} className="swiper-lazy">
-            <div className={`relative w-full h-full flex items-center justify-center ${isProfilePage ? "pr-24" : ""}`}>
-              
-              {/* (17)*/}
-              <Image
-                src={img.src}
+        {slides.map((slide, i) => (
+          <SwiperSlide key={slide.id}>
+            <div
+              className={`relative w-full h-full flex items-center justify-center ${
+                isProfilePage ? "pr-24" : ""
+              }`}
+            >
+              <img
+                src={
+                  slide.mediaUrl
+                    ? `${BASE_MEDIA_URL}${slide.mediaUrl}`
+                    : "/placeholder-story.jpg"
+                }
+                onError={(e) => {
+                  e.currentTarget.src = "/placeholder-story.jpg";
+                }}
                 alt="Story"
-                width={1080}
-                height={1920}
-                className="max-w-full max-h-full object-contain rounded-xl select-none swiper-lazy"
-              
-                priority={i === startIndex}
-                loading={i === startIndex ? "eager" : "lazy"}
+                className="max-w-full max-h-full object-contain rounded-xl select-none"
               />
 
-           
-              <div className="swiper-lazy-preloader"></div>
+              {slide.caption && (
+                <div className="absolute bottom-20 left-6 right-6 text-white text-lg">
+                  {slide.caption}
+                </div>
+              )}
 
-           
               <div className="absolute top-4 left-4 right-4 flex gap-1">
-                {allImages.map((_, idx) => (
-                  <div key={idx} className="flex-1 h-1 bg-white/30 rounded-full overflow-hidden">
+                {slides.map((_, idx) => (
+                  <div
+                    key={idx}
+                    className="flex-1 h-1 bg-white/30 rounded-full overflow-hidden"
+                  >
                     <div
-                      className={`h-full bg-white`}
+                      className="h-full bg-white"
                       style={{
                         width:
                           idx < currentIndex
@@ -153,7 +161,11 @@ export default function StoryViewer() {
                             ? undefined
                             : "0%",
                         animation:
-                          idx === currentIndex ? "progress 4s linear forwards" : "none",
+                          idx === currentIndex
+                            ? `progress ${
+                                slides[currentIndex]?.duration || 4
+                              }s linear forwards`
+                            : "none",
                       }}
                     />
                   </div>
@@ -163,7 +175,6 @@ export default function StoryViewer() {
           </SwiperSlide>
         ))}
       </Swiper>
-
     </div>
   );
 }

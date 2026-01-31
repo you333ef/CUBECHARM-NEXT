@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useContext } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { ReactNode } from 'react';
@@ -20,6 +20,8 @@ import {
   IoLocationOutline,
   IoChatboxOutline,
 } from 'react-icons/io5';
+import axios from 'axios';
+import AuthContext from '@/app/providers/AuthContext';
 
 interface MenuItem {
   label: string;
@@ -49,14 +51,42 @@ const Dropdown = () => {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+  const { baseUrl } = useContext(AuthContext)!;
+
   const closeDropdown = () => setIsOpen(false);
+const handleAuthAction = async (router: any) => {
+  try {
+    //revoke refresh token 
+    await axios.post(
+      `${baseUrl}/api/Auth/revoke-token`,
+      {},
+      { withCredentials: true }
+    );
+  } catch (error) {
+    console.warn("Revoke token failed", error);
+  } finally {
+    if (typeof window !== "undefined") {
+      localStorage.removeItem("accessToken");
+    }
+
+    router.push("/AuthLayout/Login");
+  }
+};
+
+const hasToken =
+  typeof window !== "undefined" &&
+  !!localStorage.getItem("accessToken");
 
   // Profile Settings links
   const profileSettings: MenuItem[] = [
     { label: 'Profile Info', href: '/userportal/Settings/profilesettings/profile_info', icon: <IoPersonOutline size={16} /> },
     { label: 'Change Password', href: '/AuthLayout/changePass', icon: <IoLockClosedOutline size={16} /> },
     { label: 'Update Profile', href: '/userportal/Settings/profilesettings/update', icon: <IoCreateOutline size={16} /> },
-    { label: 'Log Out', icon: <IoLogOutOutline size={16} />, onClick: () => { router.push('/AuthLayout/Login'); } },
+  {
+    label: hasToken ? 'Log Out' : 'Login',
+    icon: <IoLogOutOutline size={16} />,
+    onClick: () => handleAuthAction(router),
+  },
   ];
 
   // CubeCharm Info links
@@ -67,6 +97,8 @@ const Dropdown = () => {
     { label: 'Help', href: '/userportal/Settings/cube_info/help', icon: <IoHelpCircleOutline size={16} /> },
     { label: 'Locations', href: '/userportal/Settings/cube_info/locations', icon: <IoLocationOutline size={16} /> },
     { label: 'FAQ', href: '/userportal/Settings/cube_info/faq', icon: <IoChatboxOutline size={16} /> },
+    { label: 'Premiam Plane', href: '/userportal/Settings/cube_info/PremiamPlane', icon: <IoLocationOutline size={16} /> },
+
   ];
 
   return (

@@ -1,9 +1,11 @@
-
-"use client"; 
-
+"use client";
 import { useForm } from "react-hook-form";
-import { FaGoogle } from "react-icons/fa";
-import { useRouter } from "next/navigation"; 
+import { FaGoogle, FaFacebookF } from "react-icons/fa"; // NEW
+import { useRouter } from "next/navigation";
+import axios from "axios";
+import { useContext, useEffect } from "react";
+import AuthContext from "@/app/providers/AuthContext";
+import { toast } from "sonner";
 
 // 1
 type FormData = {
@@ -14,30 +16,104 @@ type FormData = {
 
 export default function LoginPage() {
   const router = useRouter();
-
   const {
     register,
     handleSubmit,
     formState: { errors },
     watch,
   } = useForm<FormData>();
-
   const password = watch("password");
 
   //  2
-  const onSubmit = async (data: FormData) => {
-    console.log("Login payload ", data);
-    
-  };
+  const { baseUrl } = useContext(AuthContext)!;
 
-  // 3 
+  // 3
   const goToForget = () => router.push("/AuthLayout/forget");
 
+  const onSubmit = async (data: FormData) => {
+    try {
+      const response = await axios.post(
+        baseUrl + "/Auth/login",
+        {
+          emailOrUsername: data.email,
+          password: data.password,
+        },
+        {
+          headers: {
+            "Content-Type": "application/json",
+          },
+        }
+      );
+     
+
+      console.log("Login success:", response.data);
+      localStorage.setItem("accessToken", response.data.accessToken);
+     
+      toast.success("Logged in successfully!");
+      router.push("/");
+    }
+  catch (error: unknown) {
+  if (axios.isAxiosError(error)) {
+    console.error("Axios full error:", error.toJSON());
+
+    const data = error.response?.data as any;
+    const msg = data?.errors?.[0] || data?.message || error.message || "Login failed!";
+    console.log("Login response:", msg);
+
+    toast.error(msg);
+  } else if (error instanceof Error) {
+    console.error("Error:", error.message);
+    toast.error(error.message);
+  } else {
+    console.error("Unknown error:", error);
+    toast.error("Login failed!");
+  }
+}
+
+  };
+
+  // =========================
+  // Google Login Popup
+  // =========================
+  // NEW: Opens Google popup and expects accessToken returned from Google OAuth
+  const handleGoogleLogin = () => {
+    const googleAuthUrl =
+      "https://accounts.google.com/o/oauth2/v2/auth" +
+      "?response_type=code" +
+      "&client_id=83194393584-n1kfcsuqq22c75i7jtjr9n742fgifeje.apps.googleusercontent.com" +
+      "&redirect_uri=http://localhost:3000/AuthLayout/google-callback" +
+      "&scope=email profile";
+
+    window.open(
+      googleAuthUrl,
+      "_blank",
+      "width=500,height=600"
+    );
+  };
+  //  Listen for messages from the popup
+  useEffect(() => {
+  const handler = (event: MessageEvent) => {
+    if (event.origin !== window.location.origin) return;
+
+    if (event.data?.type === "GOOGLE_LOGIN_FAILED") {
+      toast.error("Google login failed. Please try again.");
+    }
+
+    if (event.data?.type === "GOOGLE_LOGIN_SUCCESS") {
+      toast.success("Logged in with Google successfully ");
+      router.replace("/");
+    }
+  };
+
+  window.addEventListener("message", handler);
+  return () => window.removeEventListener("message", handler);
+}, []);
+
+ 
   return (
     <div className="flex justify-center items-center h-screen bg-[#FFFFFF] p-3">
       <div className="w-full max-w-md bg-white shadow-xl rounded-2xl px-6 py-6">
-
-       {/*  4 */}
+        {/*  4 */}
         <div className="flex items-center justify-center mb-5">
           <h2 className="text-2xl font-extrabold text-[#111827] tracking-tight">
             CUBECHARM
@@ -50,30 +126,47 @@ export default function LoginPage() {
         </p>
 
         {/*6*/}
-        <button className="w-full flex items-center justify-center border border-[#E5E7EB] rounded-lg py-3 text-sm font-medium text-[#111827] hover:bg-gray-50 transition mb-5">
+        <button
+          onClick={handleGoogleLogin} // NEW
+          className="w-full flex items-center justify-center border border-[#E5E7EB] rounded-lg py-3 text-sm font-medium text-[#111827] hover:bg-gray-50 transition mb-3"
+        >
           <FaGoogle className="w-5 h-5 mr-2" />
           Continue with Google
         </button>
 
+       
+      
+
         {/* 7 */}
         <div className="flex items-center my-6">
           <div className="flex-grow border-t border-gray-200" />
-          <span className="px-3 text-xs text-gray-400">OR LOGIN WITH EMAIL</span>
+          <span className="px-3 text-xs text-gray-400">
+            OR LOGIN WITH EMAIL
+          </span>
           <div className="flex-grow border-t border-gray-200" />
         </div>
 
         {/* 8 */}
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-
           {/* 9  */}
           <div>
             <input
               type="email"
               placeholder="Email address"
-              {...register("email", { required: "Email required" })}
+              {...register("email", {
+                required: "Email required",
+                pattern: {
+                  value: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
+                  message: "Invalid email",
+                },
+              })}
               className="w-full rounded-lg border border-[#E5E7EB] p-3 text-sm focus:ring-2 focus:ring-[#4B3CF5] focus:outline-none"
             />
-            {errors.email && <p className="text-red-500 text-xs mt-1">{errors.email.message}</p>}
+            {errors.email && (
+              <p className="text-red-500 text-xs mt-1">
+                {errors.email.message}
+              </p>
+            )}
           </div>
 
           {/* 10  */}
@@ -83,11 +176,18 @@ export default function LoginPage() {
               placeholder="Password"
               {...register("password", {
                 required: "Password required",
-                minLength: { value: 6, message: "Min 6 characters" },
+                minLength: {
+                  value: 6,
+                  message: "Min 6 characters",
+                },
               })}
               className="w-full rounded-lg border border-[#E5E7EB] p-3 text-sm focus:ring-2 focus:ring-[#4B3CF5] focus:outline-none"
             />
-            {errors.password && <p className="text-red-500 text-xs mt-1">{errors.password.message}</p>}
+            {errors.password && (
+              <p className="text-red-500 text-xs mt-1">
+                {errors.password.message}
+              </p>
+            )}
           </div>
 
           {/*  11 */}
@@ -95,15 +195,26 @@ export default function LoginPage() {
             <input
               type="checkbox"
               className="mr-2"
-              {...register("terms", { required: "You must agree" })}
+              {...register("terms", {
+                required: "You must agree",
+              })}
             />
             <span className="text-[#111827]">
               I agree to the{" "}
-              <a href="#" className="text-[#4B3CF5] font-medium">Terms</a> and{" "}
-              <a href="#" className="text-[#4B3CF5] font-medium">Privacy</a>
+              <a href="#" className="text-[#4B3CF5] font-medium">
+                Terms
+              </a>{" "}
+              and{" "}
+              <a href="#" className="text-[#4B3CF5] font-medium">
+                Privacy
+              </a>
             </span>
           </label>
-          {errors.terms && <p className="text-red-500 text-xs">{errors.terms.message}</p>}
+          {errors.terms && (
+            <p className="text-red-500 text-xs">
+              {errors.terms.message}
+            </p>
+          )}
 
           {/* 12 */}
           <button
@@ -117,7 +228,10 @@ export default function LoginPage() {
         {/* 13 */}
         <p className="text-center text-sm text-[#6B7280] mt-6">
           Forgot your password?{" "}
-          <button onClick={goToForget} className="text-[#4B3CF5] font-medium hover:underline">
+          <button
+            onClick={goToForget}
+            className="text-[#4B3CF5] font-medium hover:underline"
+          >
             Click Here
           </button>
         </p>

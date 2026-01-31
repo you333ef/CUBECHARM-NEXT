@@ -1,12 +1,35 @@
-"use client"
-import React, { useState, useCallback, useEffect, Suspense } from "react";
-import HeadlessDemo from "../sharedAdmin/DELETE_CONFIRM";
+"use client";
+
+import React, {
+  useCallback,
+  useEffect,
+  useState,
+  Suspense,
+  useContext,
+  useMemo,
+} from "react";
 import Taple_Two from "../sharedAdmin/TAPLE_CLIENTS";
-import ViewClient from "../sharedAdmin/VIEW_CLIENT";
+import HeadlessDemo from "../sharedAdmin/DELETE_CONFIRM";
 import { FiChevronLeft, FiChevronRight } from "react-icons/fi";
+import axios from "axios";
+import { toast } from "sonner";
+import AuthContext from "@/app/providers/AuthContext";
 
+/* ===== API User ===== */
+interface User {
+  userId: string;
+  username: string;
+  email: string;
+  phoneNumber: string | null;
+  postsCount: number;
+  followersCount: number;
+  followingCount: number;
+  isActive: boolean;
+  createdDate: string;
+  lastLoginDate: string | null;
+}
 
-// Student interface
+/* ===== Table Student Shape ===== */
 interface Student {
   _id: string;
   first_name: string;
@@ -15,203 +38,174 @@ interface Student {
   role: string;
   status: string;
   group?: {
-    createdAt: string;
+    name: string;
     students: any[];
     max_students: number;
     status: string;
-    name: string;
+    createdAt: string;
   };
 }
 
-// Define props interface for Taple_Two
-interface TableProps {
-  data_Students: Student[];
-  FunGetAll: () => void;
-  funView: (item: Student) => void;
-  funDelete: (item: Student) => void;
-  funBlock: (item: Student) => void;
+interface Pagination {
+  page: number;
+  totalPages: number;
+  hasNextPage: boolean;
+  hasPreviousPage: boolean;
 }
 
-const CLIENTS_INFO: React.FC = () => {
-  // هيترمي فيها fakeStudents كمان شوية 
-  const [data_Students, setDataStudents] = useState<Student[]>([]);
-  const [saveInput, setSaveInput] = useState<string>("");
-  const [status_Confirm, setStatus_Confirm] = useState<boolean>(false);
-  const [status_BlockConfirm, setStatus_BlockConfirm] = useState<boolean>(false);
-  const [id_delete, setId_Delete] = useState<string>("");
-  const [name, setName] = useState<string>("");
-  const [stateView, setStateView] = useState<boolean>(false);
-  //  TO Save Item When Click To View
-  const [save_info, setSave_info] = useState<Student | null>(null); 
-  const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 12;
+const USERS_PAGE = () => {
+  const { baseUrl } = useContext(AuthContext)!;
 
-  // Generate fake data هتتشال لما يكون فيه API Real
-  //  ال Use Callback تُعتبر آداة تثبيت دوال بين الريندرز 
-  const setupFakeData = useCallback(() => {
-    const fakeStudents: Student[] = Array.from({ length: 36 }, (_, index) => ({
-      _id: `${index + 1}`,
-      first_name: `Clients${index + 1}`,
-      last_name: `Yousef${index + 1}`,
-      email: `Client${index + 1}@example.com`,
-      role: "User",
-      // لو كان الاندكس لا يقبل القسمة علي 2 يعني رقم فردي هيكون INACTIVE 
-      status: index % 2 === 0 ? "Active" : "Inactive",
-      group: {
-        // بتعمل التاريخ الحالي ناقص قيمة الاندكس و بعد كدة بتحول الرقم لاسترينج 
-        createdAt: new Date(Date.now() - index * 86400000).toISOString(),
-        students: new Array(Math.floor(Math.random() * 10) + 1),
-        max_students: 10,
-        status: index % 3 === 0 ? "Open" : "Closed",
-        name: `Appartment ${index + 1}`,
-      },
-    }));
-    
-    setDataStudents(fakeStudents);
-  }, []);
+  const [users, setUsers] = useState<User[]>([]);
+  const [pagination, setPagination] = useState<Pagination | null>(null);
+  const [loading, setLoading] = useState(false);
 
-  // Load initial data
+  const [page, setPage] = useState(1);
+  const pageSize = 4;
+
+  /* ===== بدل blockUser ===== */
+  const [blockUserId, setBlockUserId] = useState<string | null>(null);
+
+  const accessToken =
+    typeof window !== "undefined"
+      ? localStorage.getItem("accessToken")
+      : null;
+
+  const axiosConfig = {
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+    },
+  };
+
+  /* ===== Fetch users ===== */
+  const getUsers = useCallback(async () => {
+    if (!accessToken) return;
+
+    try {
+      setLoading(true);
+
+      const res = await axios.get(`${baseUrl}/admin/users`, {
+        ...axiosConfig,
+        params: { page, pageSize },
+      });
+
+      setUsers(res.data.data.items);
+      setPagination(res.data.data);
+    } catch {
+      toast.error("Failed to load users");
+    } finally {
+      setLoading(false);
+    }
+  }, [page, accessToken, baseUrl]);
+
   useEffect(() => {
-    setupFakeData();
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        setStateView(false);
-        setStatus_Confirm(false);
-        setStatus_BlockConfirm(false);
-      }
-    };
-    document.addEventListener("keydown", handleKeyDown);
-    return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [setupFakeData]);
+    getUsers();
+  }, [getUsers]);
 
-  // Filter students
-  //  ال USe MEMO يتحافظ علي نتيجة الفانكشن 
-  //  ال USE Callback بتحافظظ علي فانكشن 
-  const filteredStudents = React.useMemo(() => {
-
-    const normalized = saveInput.trim().toLowerCase();
-    const result = normalized === ""
-      ? data_Students
-      : data_Students.filter((s) =>
-          `${s.first_name ?? ""} ${s.last_name ?? ""}`.toLowerCase().includes(normalized)
-        );
-    return result;
-  }, [data_Students, saveInput]);
-
-  // Pagination
-  const totalPages = Math.ceil(filteredStudents.length / itemsPerPage);
-  const paginatedStudents = filteredStudents.slice(
-    (currentPage - 1) * itemsPerPage,
-    currentPage * itemsPerPage
+  /* ===== selected user مرة واحدة ===== */
+  const selectedUser = useMemo(
+    () => users.find((u) => u.userId === blockUserId) ?? null,
+    [blockUserId, users]
   );
 
-  // Handle view action
-  const funView = useCallback((item: Student) => {
-    setStateView(true);
-    setSave_info(item);
-  }, []);
+  /* ===== Block user ===== */
+  const confirmBlock = useCallback(async () => {
+    if (!selectedUser || !accessToken) return;
 
-  // Handle delete action
-  const funDelete = useCallback((item: Student) => {
-    if (item?._id) {
-      setStatus_Confirm(true);
-      //  رمينا ال Id + Name في ال State علشان هنستعملهم تحت 
-      setId_Delete(item._id);
-      setName(item.first_name);
+    try {
+      await axios.post(
+        `${baseUrl}/admin/users/${selectedUser.userId}/ban`,
+        {},
+        axiosConfig
+      );
+
+      toast.success("User blocked");
+
+      setUsers((prev) =>
+        prev.map((u) =>
+          u.userId === selectedUser.userId
+            ? { ...u, isActive: false }
+            : u
+        )
+      );
+    } catch {
+      toast.error("Block failed");
+    } finally {
+      setBlockUserId(null);
     }
-  }, []);
+  }, [selectedUser, accessToken, baseUrl]);
 
-  // Handle block action
-  const funBlock = useCallback((item: Student) => {
-    if (item?._id) {
-      //  افتح الكونفيرم و ارميلي ال Id + First  Name فيها 
-      setStatus_BlockConfirm(true);
-      setId_Delete(item._id);
-      setName(item.first_name);
-    }
-  }, []);
-
-  // Confirm delete
-  //  لما بأكد ان Ok احذف 
-  const deleteTrue = useCallback(async () => {
-    //  اقفل الكونفيرم و فلتر اللداتا الموجود نزل منها ال id 
-    setStatus_Confirm(false);
-    setDataStudents((prev) => prev.filter((s) => s._id !== id_delete));
-  }, [id_delete]);
-
-  // Confirm block
-  //  لما بأكد ال Block 
-  const blockTrue = useCallback(async () => {
-    setStatus_BlockConfirm(false);
-    //  بنحول ال Status  بدل مهوا Active أو Inactive لBlocked
-    setDataStudents((prev) =>
-      prev.map((s) =>
-        s._id === id_delete ? { ...s, status: "Blocked" } : s
-      )
-    );
-  }, [id_delete]);
+  /* ===== Map Users → Students for table ===== */
+  const tableData: Student[] = useMemo(
+    () =>
+      users.map((u) => ({
+        _id: u.userId,
+        first_name: u.username,
+        last_name: "",
+        email: u.email,
+        role: "User",
+        status: u.isActive ? "Active" : "Blocked",
+        group: {
+          name: "—",
+          students: new Array(u.followersCount ?? 0),
+          max_students: 0,
+          status: "N/A",
+          createdAt: u.createdDate,
+        },
+      })),
+    [users]
+  );
 
   return (
-    <div className="min-h-screen bg-[#ffffff] p-4">
-      <div className="mb-4">
-        <div className="flex flex-col md:flex-row items-center gap-3">
-          <div className="flex items-center w-full md:w-2/3 lg:w-1/2 bg-[#ffffff] border border-[#e2e8f0] rounded shadow-sm overflow-hidden mx-auto justify-center mt-2.5">
-            <input
-              type="text"
-              value={saveInput}
-              //  اي تغيير في ال Input هنرميه في ال saveInput State
-              onChange={(e) => setSaveInput(e.target.value)}
-              placeholder="Search students..."
-              className="w-full px-3 py-2 text-sm outline-none text-[#1f2937]"
-            />
-            <button
-              type="button"
-              className="px-4 py-2 bg-gradient-to-r from-blue-400 via-blue-500 to-blue-600 text-white font-bold text-sm"
-            >
-              Search
-            </button>
-          </div>
-        </div>
-      </div>
-
-      <Suspense fallback={<div className="w-full h-64 bg-[#f3f4f6] animate-pulse" />}>
+    <div className="min-h-screen bg-white p-4">
+      <Suspense fallback={<div className="h-64 bg-gray-100 animate-pulse" />}>
         <Taple_Two
-          data_Students={paginatedStudents}
-          funView={funView}
-          funDelete={funDelete}
-          funBlock={funBlock}
+          data_Students={tableData}
+          funBlock={(item) => {
+            setBlockUserId(item._id);
+          }}
         />
       </Suspense>
 
-      {/* Pagination Controls */}
-      <div className="flex justify-center items-center gap-2 mt-4">
-        <button
-          onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
-          disabled={currentPage === 1}
-          className="px-3 py-1 bg-gray-200 rounded disabled:opacity-50"
-        >
-          <FiChevronLeft/>
-        </button>
-        <span>
-          Page {currentPage} of {totalPages}
-        </span>
-        <button
-          onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
-          disabled={currentPage === totalPages}
-          className="px-3 py-1 bg-gray-200 rounded disabled:opacity-50"
-        >
-         <FiChevronRight/>
-        </button>
-      </div>
+      {pagination && (
+        <div className="flex justify-center items-center gap-3 mt-6">
+          <button
+            disabled={!pagination.hasPreviousPage}
+            onClick={() => setPage((p) => Math.max(p - 1, 1))}
+            className="px-3 py-1 bg-gray-200 rounded disabled:opacity-50"
+          >
+            <FiChevronLeft />
+          </button>
 
-      {status_Confirm && <HeadlessDemo DeleteTrue={deleteTrue} name={name} actionType="delete" />}
-      {status_BlockConfirm && <HeadlessDemo DeleteTrue={blockTrue} name={name} actionType="block" />}
-      
-      {stateView && (
-        <ViewClient stateView={stateView} setStateView={setStateView} user={save_info} />
+          <span className="text-sm">
+            Page {pagination.page} of {pagination.totalPages}
+          </span>
+
+          <button
+            disabled={!pagination.hasNextPage}
+            onClick={() => setPage((p) => p + 1)}
+            className="px-3 py-1 bg-gray-200 rounded disabled:opacity-50"
+          >
+            <FiChevronRight />
+          </button>
+        </div>
+      )}
+
+      {selectedUser && (
+        <HeadlessDemo
+          DeleteTrue={confirmBlock}
+          name={selectedUser.username}
+          actionType="block"
+        />
+      )}
+
+      {loading && (
+        <div className="fixed inset-0 bg-white/60 flex items-center justify-center">
+          Loading...
+        </div>
       )}
     </div>
   );
 };
 
-export default CLIENTS_INFO;
+export default USERS_PAGE;

@@ -1,31 +1,41 @@
-"use client"
-import { useState } from "react";
+"use client";
+import { useContext, useEffect, useState } from "react";
 import { createPortal } from "react-dom";
+import { FiMoreVertical } from "react-icons/fi";
+
 import { toast } from "sonner";
 import {
   FaHeart,
-  FaRegComment,
   FaPaperPlane,
   FaRegBookmark,
-  FaEllipsisH,
   FaSmile,
-  FaEdit,
+ 
 } from "react-icons/fa";
+import { FiX } from "react-icons/fi";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
+import axios from "axios";
+import AuthContext from "@/app/providers/AuthContext";
 
+/* ---------- helpers ---------- */
+const limitWords = (text: string, limit = 3) => {
+  if (!text) return "";
+  const words = text.split(" ");
+  return words.length > limit
+    ? words.slice(0, limit).join(" ") + "..."
+    : text;
+};
 
-// 1
+/* ---------- Dialog ---------- */
 const Dialog = ({ open, onOpenChange, children }: any) => {
   if (!open) return null;
-
   return createPortal(
     <div
-      className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/50"
+      className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/60"
       onClick={() => onOpenChange(false)}
     >
       <div
-        className="bg-white dark:bg-zinc-900 rounded-lg shadow-lg overflow-hidden"
+        className="bg-white w-full max-w-md md:max-w-4xl h-[95vh] rounded-xl overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >
         {children}
@@ -34,187 +44,308 @@ const Dialog = ({ open, onOpenChange, children }: any) => {
     document.body
   );
 };
+const ScrollArea = ({ className = "", children }: any) => (
+  <div className={`overflow-y-auto ${className}`}>{children}</div>
+);
 
-//2
-const DialogContent = ({ className = "", children }: any) => {
-  return <div className={className}>{children}</div>;
-};
+/* ---------- Component ---------- */
+const PostModal = ({ post, open, onOpenChange, isLiked, onLike }: any) => {
+  const { baseUrl } = useContext(AuthContext)!;
+  const auth = useContext(AuthContext)!;
+  const currentUserId = auth.user?.sub;
+  const navigate = useRouter();
 
-//3
-const ScrollArea = ({ className = "", children }: any) => {
-  return (
-    <div
-      className={`overflow-y-auto ${className}`}
-      style={{ maxHeight: "100%" }}
-    >
-      {children}
-    </div>
-  );
-};
-
-// 4
-interface PostModalProps {
-  post: any;
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  isLiked: boolean;
-  onLike: () => void;
-}
-
-const PostModal = ({
-  post,
-  open,
-  onOpenChange,
-  isLiked,
-  onLike,
-}: PostModalProps) => {
+  const [comments, setComments] = useState<any[]>([]);
   const [commentText, setCommentText] = useState("");
-  const [tempComment, setTempComment] = useState("");
-  const [isEditing, setIsEditing] = useState(false);
+  const [editingCommentId, setEditingCommentId] = useState<number | null>(null);
 
-  const navigate = useRouter()
+  useEffect(() => {
+    if (post?.comments) setComments(post.comments);
+  }, [post]);
 
-  // 5
-  const handleComment = () => {
-    if (!commentText.trim()) return;
-    if (isEditing) {
-      toast.success("Comment updated successfully");
-      setTempComment(commentText);
-      setIsEditing(false);
-    } else {
-      toast.success("Comment added successfully");
-      setTempComment(commentText);
+  /* ---------- handlers (unchanged logic) ---------- */
+  const handleComment = async () => {
+    if (!commentText.trim() || !post?.id) return;
+
+    try {
+      if (editingCommentId) {
+        const res = await axios.put(
+          `${baseUrl}/posts/${post.id}/comments/${editingCommentId}`,
+          { text: commentText },
+          { headers: { Authorization: `Bearer ${auth.token}` } }
+        );
+        setComments((prev) =>
+          prev.map((c) =>
+            c.commentId === editingCommentId ? res.data.data : c
+          )
+        );
+        setEditingCommentId(null);
+        toast.success(res.data.message);
+      } else {
+        const res = await axios.post(
+          `${baseUrl}/posts/${post.id}/comments`,
+          { text: commentText },
+          { headers: { Authorization: `Bearer ${auth.token}` } }
+        );
+        setComments((prev) => [...prev, res.data.data]);
+        toast.success(res.data.message);
+      }
+      setCommentText("");
+    } catch {
+      toast.error("Something went wrong");
     }
-    setCommentText("");
   };
 
-  // 6
-  const handleEdit = () => {
-    setCommentText(tempComment);
-    setIsEditing(true);
+  const handleEdit = (comment: any) => {
+    setCommentText(comment.content);
+    setEditingCommentId(comment.commentId);
   };
 
-  // 7
-  const handleSavePost = () => {
-    toast.success("Post saved");
+  const handleDelete = async (commentId: number) => {
+    try {
+      await axios.delete(
+        `${baseUrl}/posts/${post.id}/comments/${commentId}`,
+        { headers: { Authorization: `Bearer ${auth.token}` } }
+      );
+      setComments((prev) => prev.filter((c) => c.commentId !== commentId));
+      toast.success("Comment deleted");
+    } catch {
+      toast.error("Failed to delete");
+    }
   };
+const handleReport = async (commentId: number) => {
+  try {
+    await axios.post(
+      `${baseUrl}/report/comment/${commentId}`,
+      {
+        reason: "Harassment",
+        description: "This comment contains harassing content.",
+      },
+      {
+        headers: {
+          Authorization: `Bearer ${auth.token}`,
+        },
+      }
+    );
 
-  //8
-  const handleCopyLink = () => {
-    const link = `https://www.facebook.com/you333ef`;
-    navigator.clipboard.writeText(link);
-    toast.success("Link copied to clipboard");
-  };
+    toast.success("Comment reported successfully");
+  } catch (error: any) {
+    toast.error(
+      error?.response?.data?.message || "Failed to report comment"
+    );
+  }
+};
 
-  // 9
-  const handleUserClick = () => {
-    navigate.push("/account/user-profile");
-  };
+  /* ---------- UI ---------- */
+const [localLiked, setLocalLiked] = useState(isLiked);
+useEffect(() => {
+  setLocalLiked(isLiked);
+}, [isLiked]);
+
+
+const [openMenuId, setOpenMenuId] = useState<number | null>(null);
+const [confirmAction, setConfirmAction] = useState<
+  { type: "delete" | "report"; commentId: number } | null
+>(null);
+
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-7xl w-full h-[90vh] p-0 gap-0 overflow-hidden md:flex-row flex-col overflow-y-auto md:overflow-hidden z-[9999]">
-        <div className="flex h-full flex-col md:flex-row">
-          {/* 10 */}
-          <div className="flex-1 flex items-center justify-center md:max-w-[60%]">
-           <Image
-              src={post.postImage}
-              alt="Post"
-              width={400}       
-              height={400}      
-              className="object-contain"
-              style={{ width: "100%", height: "100%" }}
-            />
+      <div className="flex flex-col md:flex-row h-full">
+        {/* IMAGE (fixed height on mobile) */}
+        <div className="relative w-full md:w-2/3 h-[300px] md:h-full bg-black">
+          <Image
+            src={post.postImage || "https://via.placeholder.com/100"}
+            alt="post"
+            fill
+            unoptimized
+            className="object-contain"
+          />
+        </div>
 
+        {/* RIGHT PANEL */}
+        <div className="flex flex-col w-full md:w-1/3 h-full">
+          {/* HEADER */}
+          <div className="flex items-center justify-between p-4 border-b">
+            <div
+              className="flex items-center gap-2 cursor-pointer"
+              onClick={() => navigate.push("/account/user-profile")}
+            >
+              <Image
+                src={post.userImage || "https://via.placeholder.com/100"}
+                alt="user"
+                width={32}
+                height={32}
+                unoptimized
+                className="rounded-full"
+              />
+              <span className="text-sm font-semibold">{post.username}</span>
+            </div>
+            <FiX className="cursor-pointer" onClick={() => onOpenChange(false)} />
           </div>
 
-          {/* 11 */}
-          <div className="w-full md:w-[500px] flex flex-col ">
-            {/* 12 */}
-            <div className="flex items-center justify-between p-4 border-b border-border">
-              <div
-                className="flex items-center gap-3 cursor-pointer"
-                onClick={handleUserClick}
+          {/* CAPTION */}
+          <div className="px-4 py-2 text-sm font-medium">
+            {post.caption || "No caption"}
+          </div>
+
+         
+
+          {/* COMMENTS */}
+      <ScrollArea className="flex-1 px-4 py-3 space-y-3">
+  {comments.map((comment) => {
+    const isOwner = comment.userId === currentUserId;
+    const isMenuOpen = openMenuId === comment.commentId;
+
+    return (
+      <div
+        key={comment.commentId}
+        className="flex gap-2 items-start relative"
+      >
+        {/* <Image
+          src={comment.userAvatar || "https://via.placeholder.com/100"}
+          alt="avatar"
+          width={28}
+          height={28}
+          unoptimized
+          className="rounded-full"
+        /> */}
+
+        <div className="flex-1 bg-gray-100 rounded-lg px-3 py-2">
+          <p className="text-xs font-semibold">{comment.username}</p>
+          <p className="text-xs">{limitWords(comment.content, 10)}</p>
+        </div>
+
+        {/* MENU ICON */}
+        <button
+          onClick={() =>
+            setOpenMenuId(isMenuOpen ? null : comment.commentId)
+          }
+          className="p-1 text-gray-400 hover:text-gray-700"
+        >
+          <FiMoreVertical size={14} />
+        </button>
+
+        {/* DROPDOWN */}
+        {isMenuOpen && (
+          <div className="absolute right-0 top-7 z-50 w-32 bg-white border rounded-lg shadow-md overflow-hidden">
+            {confirmAction?.commentId === comment.commentId ? (
+              <button
+                onClick={() => {
+                  if (confirmAction?.type === "delete") {
+                    handleDelete(comment.commentId);
+                  } else {
+                    // handleReport(comment.commentId)
+                   handleReport(comment.commentId)
+                  }
+                  setConfirmAction(null);
+                  setOpenMenuId(null);
+                }}
+                className={`w-full px-3 py-2 text-xs font-semibold
+                  ${
+                    confirmAction?.type === "delete"
+                      ? "text-red-600 hover:bg-red-50"
+                      : "text-yellow-700 hover:bg-yellow-50"
+                  }`}
               >
-             <Image
-  src={post.userImage}
-  alt={post.username}
-  width={40}
-  height={40}
-  className="w-10 h-10 rounded-full object-cover"
+                Confirm {confirmAction?.type}
+              </button>
+            ) : isOwner ? (
+              <>
+                <button
+                  onClick={() => {
+                    handleEdit(comment);
+                    setOpenMenuId(null);
+                  }}
+                  className="w-full px-3 py-2 text-xs hover:bg-gray-50 text-left"
+                >
+                  Edit
+                </button>
+
+                <button
+                  onClick={() =>
+                    setConfirmAction({
+                      type: "delete",
+                      commentId: comment.commentId,
+                    })
+                  }
+                  className="w-full px-3 py-2 text-xs text-red-600 hover:bg-red-50 text-left"
+                >
+                  Delete
+                </button>
+              </>
+            ) : (
+              <button
+                onClick={() =>
+                  setConfirmAction({
+                    type: "report",
+                    commentId: comment.commentId,
+                  })
+                }
+                className="w-full px-3 py-2 text-xs text-yellow-700 hover:bg-yellow-50 text-left"
+              >
+                Report
+              </button>
+            )}
+          </div>
+        )}
+      </div>
+    );
+  })}
+</ScrollArea>
+
+
+ {/* INPUT */}
+<div className="border-t px-4 py-3">
+  <div className="flex items-center gap-2 mb-3">
+    <FaSmile className="text-gray-500" />
+    <input
+      className="flex-1 text-sm outline-none bg-transparent"
+      placeholder="Add a comment..."
+      value={commentText}
+      onChange={(e) => setCommentText(e.target.value)}
+      onKeyDown={(e) => e.key === "Enter" && handleComment()}
+    />
+    <button
+      onClick={handleComment}
+      disabled={!commentText.trim()}
+      className="text-sm font-semibold text-blue-500 disabled:opacity-40"
+    >
+      Post
+    </button>
+  </div>
+
+ <div className="flex items-center justify-between pt-2 border-t pointer-events-none">
+  <div className="flex items-center gap-5 pointer-events-auto">
+  <FaHeart
+  size={18}
+  onClick={() => {
+    setLocalLiked((prev:any) => !prev); 
+    onLike();                     
+  }}
+  className={`cursor-pointer transition ${
+    localLiked ? "text-red-500" : "text-gray-700"
+  }`}
 />
 
-                <p className="font-semibold text-sm">{post.username}</p>
-              </div>
-              <button className="hover:text-muted-foreground transition-colors">
-                <FaEllipsisH size={18} />
-              </button>
-            </div>
 
-            {/* 13 */}
-            <ScrollArea className="flex-1 p-4">
-              {tempComment && (
-                <div className="flex items-center justify-between bg-gray-100 p-3 rounded-lg mb-3">
-                  <p className="text-sm break-all">{tempComment}</p>
-                  <button
-                    onClick={handleEdit}
-                    className="text-gray-500 hover:text-blue-600"
-                  >
-                    <FaEdit size={16} />
-                  </button>
-                </div>
-              )}
-            </ScrollArea>
+    <FaPaperPlane
+      size={18}
+      className="cursor-pointer text-gray-700"
+    />
+  </div>
 
-            {/* 14 */}
-            <div className="border-t border-border p-4">
-              <div className="flex items-center justify-between mb-3">
-                <div className="flex items-center gap-4">
-                  <button
-                    onClick={onLike}
-                    className="hover:text-muted-foreground transition-colors"
-                  >
-                    <FaHeart
-                      size={20}
-                      className={isLiked ? "text-red-500" : ""}
-                    />
-                  </button>
-                  <FaPaperPlane size={20} onClick={handleCopyLink} />
-                </div>
-                <FaRegBookmark size={20} onClick={handleSavePost} />
-              </div>
+  <FaRegBookmark
+    size={18}
+    className="cursor-pointer text-gray-700 pointer-events-auto"
+  />
+</div>
 
-              <p className="font-semibold text-sm mb-3">
-                {post.likes.toLocaleString()} likes
-              </p>
 
-              {/* 15 */}
-              <div className="flex items-center gap-2 border-t border-border pt-3">
-                <FaSmile size={22} />
-                <input
-                  type="text"
-                  placeholder="Add a comment..."
-                  value={commentText}
-                  onChange={(e) => setCommentText(e.target.value)}
-                  onKeyPress={(e) => e.key === "Enter" && handleComment()}
-                  className="flex-1 text-sm outline-none bg-transparent placeholder:text-muted-foreground"
-                />
-                <button
-                  onClick={handleComment}
-                  disabled={!commentText.trim()}
-                  className={`font-semibold text-sm transition-colors ${
-                    commentText.trim()
-                      ? "text-primary hover:text-primary/80"
-                      : "text-primary/40"
-                  }`}
-                >
-                  {isEditing ? "Update" : "Post"}
-                </button>
-              </div>
-            </div>
-          </div>
+</div>
+
         </div>
-      </DialogContent>
+      </div>
     </Dialog>
   );
 };

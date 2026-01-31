@@ -1,109 +1,102 @@
 "use client";
-import AuthContext from "@/app/providers/AuthContext";
-import { useRouter } from "next/navigation";
-import React, { useContext } from "react";
-import ReactDOM from "react-dom";
 
+import React from "react";
+import ReactDOM from "react-dom";
 import { toast } from "sonner";
 
-
-interface PostOptionsDialogProps {
+export interface PostOptionDialogProps {
   open?: boolean;
   onClose?: () => void;
   postId?: number;
+  isOwner: boolean;
+  onReport: () => void;
+  onBlock?: () => void;
+  onDelete?: () => void;
+   onUpdate?: () => void;  
+  showUpdate?: boolean;  
+  post?: any;
+  GETACTIVITY_FeeD?: () => Promise<void>;
   username?: string;
 }
 
-const PostOptionsDialog: React.FC<PostOptionsDialogProps> = ({ open, onClose, postId, username }) => {
-  const {role, setRole } =useContext(AuthContext)!;
- const navi=useRouter()
+const PostOptionDialogClient: React.FC<PostOptionDialogProps> = ({
+  open,
+  onClose,
+  postId,
+  username,
+  onBlock,
+  onDelete,
+  isOwner,
+  onUpdate,     
+  showUpdate, 
+  onReport,
+  GETACTIVITY_FeeD,
+}) => {
   if (!open) return null;
 
-
- 
-  
-
-
-
-   const handleAction = (action: string) => {
-
-    if (!role) {
-      onClose?.();
-      toast.error('Register first to access this feature');
-      navi.push('/providers/UnAuthorized');
-      return;
-    }
-
-    onClose?.();
-
-    switch (action) {
-      case "report":
-        toast.error("Post reported successfully");
-        break;
-      case "unfollow":
-        toast.success(`Unfollowed ${username || "user"}`);
-        break;
-      case "block":
-        toast.error(`Blocked ${username || "user"}`);
-        break;
-      case "copy":
-       
-
-        toast.success("Link copied to clipboard");
-        break;
-      case "share":
-        toast.success("Share options opened");
-        break;
-      case "about":
-        toast.info(`About ${username || "this account"}`);
-        break;
-      default:
-        toast.error("Something went wrong");
-    }
+  const copyLink = () => {
+    navigator.clipboard.writeText(`https://yourapp.com/post/${postId}`);
+    toast.success("Link copied to clipboard");
   };
 
+  const openReportModal = () => {
+    onReport();
+    onClose?.();
+  };
 
-  const dialog = (
+  return ReactDOM.createPortal(
     <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-40 z-[99999]">
       <div className="bg-white rounded-2xl shadow-xl w-[320px] overflow-hidden animate-fadeIn">
-        <h2 className="sr-only">Post Options</h2>
         <div className="flex flex-col text-center">
-          <button
-            onClick={() => handleAction("report")}
-            className="py-3 px-4 text-sm font-semibold text-red-500 hover:bg-gray-100 border-b"
-          >
-            Report
-          </button>
-          <button
-            onClick={() => handleAction("unfollow")}
-            className="py-3 px-4 text-sm font-semibold text-red-500 hover:bg-gray-100 border-b"
-          >
-            Unfollow
-          </button>
-          <button
-            onClick={() => handleAction("block")}
-            className="py-3 px-4 text-sm font-semibold text-red-500 hover:bg-gray-100 border-b"
-          >
-            Block User
-          </button>
-          <button
-            onClick={() => handleAction("copy")}
-            className="py-3 px-4 text-sm hover:bg-gray-100 border-b"
-          >
-            Copy Link
-          </button>
-          <button
-            onClick={() => handleAction("share")}
-            className="py-3 px-4 text-sm hover:bg-gray-100 border-b"
-          >
-            Share to...
-          </button>
-          <button
-            onClick={() => handleAction("about")}
-            className="py-3 px-4 text-sm hover:bg-gray-100 border-b"
-          >
-            About this account
-          </button>
+          {isOwner ? (
+            <>
+              <button
+                onClick={() => {
+                  onDelete?.();
+                  onClose?.();
+                }}
+                className="py-3 px-4 text-sm font-semibold text-red-500 hover:bg-gray-100 border-b"
+              >
+                Delete
+              </button>
+          {showUpdate && onUpdate && (
+      <button
+        onClick={() => {
+          onUpdate();
+          onClose?.();
+        }}
+        className="py-3 px-4 text-sm hover:bg-gray-100 border-b"
+      >
+        Update
+      </button>
+    )}
+
+              <button
+                onClick={copyLink}
+                className="py-3 px-4 text-sm hover:bg-gray-100 border-b"
+              >
+                Copy
+              </button>
+            </>
+          ) : (
+            <>
+              <button
+                onClick={openReportModal}
+                className="py-3 px-4 text-sm font-semibold text-red-500 hover:bg-gray-100 border-b"
+              >
+                Report
+              </button>
+              <button
+                onClick={() => {
+                  onBlock?.();
+                  onClose?.();
+                }}
+                className="py-3 px-4 text-sm hover:bg-gray-100 border-b"
+              >
+                Block
+              </button>
+            </>
+          )}
           <button
             onClick={onClose}
             className="py-3 px-4 text-sm text-gray-700 hover:bg-gray-100"
@@ -112,10 +105,9 @@ const PostOptionsDialog: React.FC<PostOptionsDialogProps> = ({ open, onClose, po
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
-
-  return ReactDOM.createPortal(dialog, document.body);
 };
 
-export default PostOptionsDialog;
+export default PostOptionDialogClient;

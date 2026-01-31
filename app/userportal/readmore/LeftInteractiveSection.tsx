@@ -20,7 +20,6 @@ const iconMap: Record<number, any> = {
   3: Utensils,
   4: Bath,
 };
-
 export default function InteractiveWrapper({ rooms, initialRoom }: { rooms: Room[]; initialRoom: Room }) {
   const [selectedRoom, setSelectedRoom] = useState<Room>(initialRoom);
   const params = useParams();

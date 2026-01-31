@@ -1,13 +1,16 @@
-"use client"
-import React, { useState } from "react";
+"use client";
+
+import React, { useContext, useEffect, useState } from "react";
+import axios from "axios";
 
 import TableShared from "../sharedAdmin/TableShared";
 import { toast } from "sonner";
 import HeadlessDemo from "../sharedAdmin/DELETE_CONFIRM";
 import { FiAlertCircle } from "react-icons/fi";
 import { useRouter } from "next/navigation";
+import AuthContext from "@/app/providers/AuthContext";
 
-// 1
+// ================= TYPES =================
 interface Report {
   id: string;
   title: string;
@@ -17,26 +20,79 @@ interface Report {
   status: string;
 }
 
+// ================= HELPERS =================
+const formatDate = (dateString: string) => {
+  const d = new Date(dateString);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(
+    2,
+    "0"
+  )}-${String(d.getDate()).padStart(2, "0")}`;
+};
+
+// ================= COMPONENT =================
 const REPORTS = () => {
-  const navigate = useRouter()
+  const navigate = useRouter();
+  const { baseUrl } = useContext(AuthContext)!;
 
-  // 2
-  const fakeData: Report[] = [
-    { id: '1', title: 'Post 1', num_reports: 5, reason: 'Spam', date: '2025-10-26', status: 'Reported' },
-    { id: '2', title: 'Post 2', num_reports: 3, reason: 'Harassment', date: '2025-10-25', status: 'Reported' },
-     { id: '3', title: 'Post 3', num_reports: 3, reason: 'Harassment', date: '2025-10-25', status: 'Reported' },
-     { id: '4', title: 'Post 4', num_reports: 3, reason: 'Harassment', date: '2025-10-25', status: 'Reported' },
-  ];
+  const accessToken =
+    typeof window !== "undefined"
+      ? localStorage.getItem("accessToken")
+      : null;
 
-  // 3
-  const headers: (keyof Report)[] = ["title", "num_reports", "reason", "date", "status"];
-
-  const [DATA_REPORTS, setDATA_REPORTS] = useState<Report[]>(fakeData);
+  // ================= STATE =================
+  const [DATA_REPORTS, setDATA_REPORTS] = useState<Report[]>([]);
   const [confirmBlock, setConfirmBlock] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [selectedItem, setSelectedItem] = useState<Report | null>(null);
 
-  // 4
+  // pagination
+  const [page, setPage] = useState(1);
+  const pageSize = 20;
+
+  // ================= TABLE HEADERS =================
+  const headers: (keyof Report)[] = [
+    "title",
+    "num_reports",
+    "reason",
+    "date",
+    "status",
+  ];
+
+  // ================= API CALL =================
+  useEffect(() => {
+    const getReports = async () => {
+      try {
+        const res = await axios.get(
+          `${baseUrl}/admin/reports?page=${page}&pageSize=${pageSize}`,
+          {
+            headers: {
+              Authorization: `Bearer ${accessToken}`,
+            },
+          }
+        );
+
+        const items = res.data.data.items
+
+        const mappedData: Report[] = items.map((item: any) => ({
+          id: String(item.id),
+          title: `${item.reportType} #${item.referenceId}`,
+          num_reports: 1,
+          reason: item.reason,
+          date: formatDate(item.createdAt),
+          status: item.status,
+        }));
+
+        setDATA_REPORTS(mappedData);
+      } catch (error) {
+        toast.error("Failed to load reports");
+        console.error(error);
+      }
+    };
+
+    getReports();
+  }, [baseUrl, accessToken, page]);
+
+  // ================= SORT =================
   const handleSort = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const value = e.target.value;
     const sorted = [...DATA_REPORTS].sort((a, b) =>
@@ -47,23 +103,25 @@ const REPORTS = () => {
     setDATA_REPORTS(sorted);
   };
 
-  //5
+  // ================= ACTIONS =================
   const handleBlock = (item: Report) => {
-    const updated = DATA_REPORTS.map(p => p.id === item.id ? { ...p, status: "Blocked" } : p);
-    setDATA_REPORTS(updated);
-    toast.error(`User blocked for 10 days for ${item.title}`);
-    setTimeout(() => setDATA_REPORTS(prev => prev.filter(p => p.id !== item.id)), 2000);
+    setDATA_REPORTS((prev) =>
+      prev.map((p) =>
+        p.id === item.id ? { ...p, status: "Blocked" } : p
+      )
+    );
+    toast.error(`User blocked for report ${item.title}`);
   };
 
-  //6
   const handleDelete = (item: Report) => {
-    const updated = DATA_REPORTS.map(p => p.id === item.id ? { ...p, status: "Deleted" } : p);
-    setDATA_REPORTS(updated);
+    setDATA_REPORTS((prev) =>
+      prev.map((p) =>
+        p.id === item.id ? { ...p, status: "Deleted" } : p
+      )
+    );
     toast.error(`${item.title} deleted`);
-    setTimeout(() => setDATA_REPORTS(prev => prev.filter(p => p.id !== item.id)), 2000);
   };
 
-  // 7
   const confirmBlockAction = () => {
     if (selectedItem) {
       handleBlock(selectedItem);
@@ -72,7 +130,6 @@ const REPORTS = () => {
     }
   };
 
-  //8
   const confirmDeleteAction = () => {
     if (selectedItem) {
       handleDelete(selectedItem);
@@ -81,21 +138,19 @@ const REPORTS = () => {
     }
   };
 
-  //9
   const cancelBlockAction = () => {
     setConfirmBlock(false);
     setSelectedItem(null);
   };
 
-  // 10
   const cancelDeleteAction = () => {
     setConfirmDelete(false);
     setSelectedItem(null);
   };
 
+  // ================= RENDER =================
   return (
     <div className="p-6">
-      
       <div className="flex items-center justify-center mb-8">
         <h1 className="text-2xl font-semibold flex items-center gap-2 text-gray-800">
           <FiAlertCircle className="text-black text-3xl" />
@@ -103,7 +158,6 @@ const REPORTS = () => {
         </h1>
       </div>
 
-     
       <div className="flex justify-end mb-6">
         <select
           onChange={handleSort}
@@ -125,10 +179,11 @@ const REPORTS = () => {
           setSelectedItem(item);
           setConfirmBlock(true);
         }}
-        funView={(item) => navigate.push(`/userportal/readmore/${item.id}`)}
+        funView={(item) =>
+          navigate.push(`/userportal/readmore/${item.id}`)
+        }
       />
 
-      {/* 11 */}
       {confirmBlock && selectedItem && (
         <HeadlessDemo
           DeleteTrue={confirmBlockAction}
@@ -138,7 +193,6 @@ const REPORTS = () => {
         />
       )}
 
-      {/* 12*/}
       {confirmDelete && selectedItem && (
         <HeadlessDemo
           DeleteTrue={confirmDeleteAction}

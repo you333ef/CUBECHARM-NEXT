@@ -1,87 +1,168 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import PropertyCard from "../componants/shared/PropertyCard";
+import { useContext, useEffect, useState } from "react";
+import PropertyCard from "../../../app/userportal/componants/shared/PropertyCard";
 import Image from "next/image";
+import axios from "axios";
 import { toast } from "sonner";
-import { properties } from "../../utils/properties";
+import AuthContext from "@/app/providers/AuthContext";
+// import ReportModal from "../../../app/userportal/componants/shared/ReportModal";
+
+interface FavouriteProperty {
+  propertyId: number;
+  userId: number;
+  title: string;
+  price: number;
+  currency: string;
+  listingType: string;
+  totalArea: number;
+  areaUnit: string;
+  categoryName: string;
+  categorySlug: string;
+  city: string;
+  country: string;
+  ownerUserId: number;
+  ownerName: string;
+  ownerProfileImage: string | null;
+  ownerBio: string | null;
+  ownerRating: number;
+  isFavourite: boolean;
+  isFollowingOwner: boolean;
+  imageUrl1: string | null;
+  imageUrl2: string | null;
+  viewsCount: number;
+  publishedAt: string;
+  isFeatured: boolean;
+  featuredUntil: string | null;
+  updatedAt: string;
+}
+
 
 export default function MyFavorites() {
-  const [favorites, setFavorites] = useState(() => properties.slice(0, 20));
+  const [favorites, setFavorites] = useState<FavouriteProperty[]>([]);
   const [loading, setLoading] = useState(true);
+  const { baseUrl } = useContext(AuthContext)!;
+
 
   useEffect(() => {
-    const preload = async () => {
-      const promises = favorites.map((p) => {
-        return new Promise((resolve) => {
-          const img = new window.Image();
-          img.src = p.image;
-          img.onload = resolve;
-          img.onerror = resolve;
-        });
-      });
-      await Promise.all(promises);
-      setLoading(false);
-    };
-    preload();
-  }, [favorites]);
+    const fetchFavorites = async () => {
+      try {
+        const token = localStorage.getItem("accessToken");
 
-  const handleRemoveFavorite = (id: number) => {
-    setFavorites((prev) => prev.filter((item) => item.id !== id));
-    toast.error("Removed from favorites");
-  };
+        const res = await axios.get(
+          `${baseUrl}/favourite/property`,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }
+        );
+
+        setFavorites(res.data?.data?.items || []);
+      } catch (error) {
+        toast.error("Failed to load favorites");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchFavorites();
+  }, [baseUrl]);
+
+ const handleRemoveFavorite = async (propertyId: number) => {
+  try {
+    const token = localStorage.getItem("accessToken");
+
+    if (!token) {
+      toast.error("No token found");
+      return;
+    }
+
+    // Ensure baseUrl is valid
+    if (!baseUrl) {
+      toast.error("Base URL is missing");
+      return;
+    }
+
+    console.log(`Making DELETE request to: ${baseUrl}/favourite/property/${propertyId}`);
+
+    const res = await axios.delete(
+      `${baseUrl}/favourite/property/${propertyId}`,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
+
+    if (res.data?.success) {
+      setFavorites((prev) => prev.filter((item) => item.propertyId !== propertyId));
+      toast.success("Removed from favorites");
+    } else {
+      toast.error("Failed to remove favorite: API response not successful");
+    }
+  } catch (error) {
+    console.error("Error during removing favorite:", error);
+    toast.error("Failed to remove favorite");
+  }
+};
+
+
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        Loading favorites...
+      </div>
+    );
+  }
 
   if (favorites.length === 0) {
     return (
       <div className="flex min-h-screen items-center justify-center px-4">
         <div className="text-center">
-          <Image
-            src="/images/noResultFavories.jpg"
-            alt="No favorites yet"
-            width={320}
-            height={320}
-            className="mx-auto"
-            priority
-          />
+        
           <p className="mt-8 text-xl text-gray-700">
-            You don&apos;t have any favorites yet.
+            You dont have any favorites yet 
           </p>
         </div>
       </div>
     );
   }
-
   return (
     <div className="min-h-screen px-4 py-10">
-      {loading ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-          {[...Array(8)].map((_, i) => (
-            <div
-              key={i}
-              className="bg-white rounded-xl shadow-md border border-gray-100 p-4 animate-pulse"
-            >
-              <div className="h-48 bg-gray-200 rounded-lg mb-4"></div>
-              <div className="h-6 bg-gray-200 rounded w-3/4 mb-3"></div>
-              <div className="h-5 bg-gray-200 rounded w-1/2 mb-4"></div>
-              <div className="flex justify-between">
-                <div className="h-5 bg-gray-200 rounded w-20"></div>
-                <div className="h-5 bg-gray-200 rounded w-20"></div>
-              </div>
-            </div>
-          ))}
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-          {favorites.map((property) => (
-            <PropertyCard
-              key={property.id}
-              {...property}
-              isFavorite={true}
-              onRemoveFavorite={() => handleRemoveFavorite(property.id)}
-            />
-          ))}
-        </div>
-      )}
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+   {favorites.map((property) => (
+  <PropertyCard
+    key={property.propertyId}
+    id={property.propertyId}
+    images={
+      property.imageUrl1
+        ? [property.imageUrl1]
+        : []
+    }
+    title={property.title}
+    description={undefined}
+    price={property.price.toString()}
+    currency={property.currency}
+    location={`${property.city}, ${property.country}`}
+    categoryName={property.categoryName}
+    categorySlug={property.categorySlug}
+    totalArea={property.totalArea}
+    viewsCount={property.viewsCount}
+    publishedAt={property.publishedAt}
+    ownerName={property.ownerName}
+    ownerProfileImage={property.ownerProfileImage ?? ""}
+    ownerRating={property.ownerRating}
+    ownerUserId={String(property.ownerUserId)}
+    isFavorite={true}
+    onRemoveFavorite={() =>
+      handleRemoveFavorite(property.propertyId)
+    }
+  />
+))}
+
+      </div>
     </div>
   );
 }

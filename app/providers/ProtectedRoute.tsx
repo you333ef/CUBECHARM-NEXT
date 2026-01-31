@@ -38,7 +38,7 @@ export default function ProtectedRoute({
     }
 
     // user-only
-    if (userOnly && role !== "user" && role !== "admin") {
+    if (userOnly && role !== "User" && role !== "admin") {
       toast("Not Authorized");
       router.replace("/providers/UnAuthorized");
       return;

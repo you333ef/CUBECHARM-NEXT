@@ -63,7 +63,7 @@ const Table_Two: React.FC<TableProps> = ({
                 </div>
                 <div className="text-sm text-gray-600 mt-1">
                   <span className="font-semibold"></span>{" "}
-                  {item.group?.name || "—"} •{" "}
+                  {item.status || "—"} •{" "}
                   {item.group?.students?.length || 0} Mempers
                 </div>
               </div>

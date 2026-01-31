@@ -1,11 +1,5 @@
 import PostOptionDialogClient from "./PostOptionsClient";
-
-interface PostOptionDialogProps {
-  open?: boolean;
-  onClose?: () => void;
-  postId?: number;
-  username?: string;
-}
+import type { PostOptionDialogProps } from "./PostOptionsClient";
 
 export default function PostOptionDialog(props: PostOptionDialogProps) {
   if (!props.open) return null;
