@@ -1,10 +1,11 @@
 "use client";
 
-import { useState, useEffect, useContext, useMemo, memo } from "react";
+import { useState, useEffect, useContext, useMemo, memo, useCallback } from "react";
 import dynamic from "next/dynamic";
 import { useRouter, useSearchParams } from "next/navigation";
 import Image from "next/image";
 import { toast } from "sonner";
+import axios from "axios";
 import AuthContext from "@/app/providers/AuthContext";
 import IMAGE from "../../../public/images/a9054bca-63af-4ee6-a443-e15e322569c3.png";
 import {
@@ -32,6 +33,7 @@ import {
   fetchPropertiesFeed,
 } from "./Activity.logic";
 import PostCard from "./componants/PostCard";
+import api from "@/app/AuthLayout/refresh";
 //  1
 const PostModal = dynamic(() => import("./componants/PostModal"), { ssr: false });
 const AddPostModal = dynamic(() => import("./componants/AddPostModal"), { ssr: false });
@@ -46,10 +48,24 @@ export default function ActivityPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { role } = useContext(AuthContext)!;
+  // Open AddPostModal if openPostModal param is present
   useEffect(() => {
     if (searchParams.get("openPostModal") === "true") {
       setShowAddPostModal(true);
       window.history.replaceState({}, "", window.location.pathname);
+    }
+  }, [searchParams]);
+
+  // Open PostModal for a specific post if postId param is present
+  useEffect(() => {
+    const postIdParam = searchParams.get("postId");
+    if (postIdParam) {
+      const postIdNum = Number(postIdParam);
+      if (!isNaN(postIdNum)) {
+        setPostDetails(null); 
+        setSelectedPost(postIdNum);
+        loadPostDetails(postIdNum);
+      }
     }
   }, [searchParams]);
   const openPostModal = useMemo(
@@ -68,44 +84,72 @@ export default function ActivityPage() {
   const [activeTab, setActiveTab] = useState<ActivityTab>("all");
   const [loadingProperties, setLoadingProperties] = useState(false);
   const [properties, setProperties] = useState<any[]>([]);
-  const { baseUrl } = useContext(AuthContext)!;
+  const { baseUrl } = useContext(AuthContext)!
   const [activityFeed, setActivityFeed] = useState<any[]>([]);
   const [reportPostId, setReportPostId] = useState<number | null>(null);
-  // Load activity feed on mount
+
+  // Following stories
+  const [followingStories, setFollowingStories] = useState<any[]>([]);
+  const fetchFollowingStories = useCallback(async () => {
+    try {
+     
+      const res = await api.get(`/stories/following`);
+      if (res.data?.success) {
+        setFollowingStories(res.data.data);
+      }
+    } catch {}
+  }, []);
+
+  // activity feed on mount
   useEffect(() => {
     loadActivityFeed();
-  }, []);
-  // Load properties when ads tab is selected
+    fetchFollowingStories();
+    const interval = setInterval(fetchFollowingStories, 10000);
+    return () => clearInterval(interval);
+  }, [fetchFollowingStories]);
+  //  properties when ads tab is selected
   useEffect(() => {
     if (activeTab === "ads" && properties.length === 0) {
       loadProperties();
     }
   }, [activeTab]);
-  //  handler to load activity feed
+  //    activity feed
   const loadActivityFeed = async () => {
-    const posts = await getActivityFeed(baseUrl);
+    const posts = await getActivityFeed();
     setActivityFeed(posts);
   };
-  //  handler to load post details
+  //    post details
   const loadPostDetails = async (postId: number) => {
     const details = await getPostDetails(postId, baseUrl);
     if (details) {
       setPostDetails(details);
     }
   };
-  //  handler for creating post
-  const handleCreatePost = async (payload: {
-    content: string;
-    media?: File;
-  }) => {
-    const createdPost = await createPost(payload, baseUrl);
-     console.log("CREATE PAYLOAD >>>", payload);
-    if (createdPost) {
-     await loadActivityFeed();
-      return createdPost;
-    }
-    return null;
-  };
+// Handler
+const handleCreatePost = async (payload: { content: string; media?: File[] }) => {
+  const formData = new FormData();
+  formData.append("Description", payload.content ?? "");
+
+  if (payload.media && payload.media.length > 0) {
+    payload.media.forEach((file) => formData.append("MediaFiles", file));
+  }
+
+  const createdPost = await createPost(formData, baseUrl);
+
+  if (createdPost) {
+    await loadActivityFeed();
+    return createdPost;
+  }
+
+  return null;
+};
+
+
+
+
+
+
+
   //  handler for toggling like
   const handleToggleLike = async (postId: string) => {
     const result = await toggleLikeAPI(postId, baseUrl);
@@ -150,7 +194,7 @@ export default function ActivityPage() {
   const loadProperties = async () => {
     try {
       setLoadingProperties(true);
-      const items = await fetchPropertiesFeed(baseUrl);
+      const items = await fetchPropertiesFeed();
       setProperties(items);
     } finally {
       setLoadingProperties(false);
@@ -183,22 +227,26 @@ type ConfirmAction = "delete" | "block" | null;
     setConfirmTarget(null);
     setConfirmAction(null);
   };
+  const videoPosts = activityFeed.filter(
+  (post) => post.hasVideo
+);
+
   return (
     <>
       <div className="min-h-screen bg-background">
         <div className="max-w-2xl mx-auto py-4 px-4 md:px-0">
         
           <div className="my-6 bg-white border border-gray-200 rounded-xl p-4 shadow-sm">
-            <StoriesBar />
+            <StoriesBar stories={followingStories} currentUserId={user?.sub} />
           </div>
-{/* 5 */}
+              {/* 5 */}
          
-          <div className="mt-6 bg-white border border-gray-200 rounded-xl p-4 shadow-sm">
-            <div className="flex items-center gap-3">
+             <div className="mt-6 bg-white border border-gray-200 rounded-xl p-4 shadow-sm">
+             <div className="flex items-center gap-3">
               <Image
-                src={IMAGE}
-                alt="Your profile picture"
-                width={44}
+                    src={IMAGE}
+                    alt="Your profile picture"
+                      width={44}
                 height={44}
                 className="rounded-xl ring-2 ring-gray-100 object-cover h-11 w-11"
               />
@@ -265,6 +313,7 @@ type ConfirmAction = "delete" | "block" | null;
             onLike={handleToggleLike}
             onOpenPost={async (target: any) => {
               if (typeof target === "number") {
+                setPostDetails(null); 
                 setSelectedPost(target);
                 await loadPostDetails(target);
               } else {
@@ -281,23 +330,34 @@ type ConfirmAction = "delete" | "block" | null;
             ))}
             </>
             }
-        {activeTab === "videos" && (
-  <div className="grid grid-cols-3 gap-[2px]">
-    {/* {videoPosts.map((post, idx) => (
-      <div
+ {activeTab === "videos" && (
+  <>
+    {videoPosts.map((post, index) => (
+      <PostCard
         key={post.id}
-      
-        className="cursor-pointer overflow-hidden bg-black aspect-square"
-      >
-        <img
-          src={post.postImage}
-          alt={post.caption}
-          className="w-full h-full object-cover hover:opacity-90 transition"
-        />
-      </div>
-    ))} */}
-  </div>
+        post={post}
+        isFirst={index === 0}
+        isLiked={post.isLiked}
+        onLike={handleToggleLike}
+        onOpenPost={async (target: any) => {
+          if (typeof target === "number") {
+            setSelectedPost(target);
+            await loadPostDetails(target);
+          } else {
+            router.push(target);
+          }
+        }}
+        onOpenOptions={() =>
+          setOptionsPost({
+            ...post,
+            isOwner: String(post.ownerUserId) === String(user?.sub),
+          })
+        }
+      />
+    ))}
+  </>
 )}
+
 
  {activeTab === "ads" && (
   <>
@@ -335,6 +395,7 @@ type ConfirmAction = "delete" | "block" | null;
               ownerProfileImage={property.ownerProfileImage}
               ownerRating={property.ownerRating}
               ownerUserId={property.ownerUserId}
+              isFavorite={property.isFavourite ?? property.isFavorite}
               fetchProperties={loadProperties}
             />
           ))}
@@ -344,16 +405,20 @@ type ConfirmAction = "delete" | "block" | null;
 )}
           </div>
         </div> 
-        <StoryViewer />
+        <StoryViewer onStoryDeleted={fetchFollowingStories} />
         {/* 7 */}
         
-        {selectedPost && postDetails && (
+        {selectedPost &&  postDetails && (
           <PostModal
             post={postDetails}
+              key={selectedPost} 
             open={!!selectedPost}
             onOpenChange={(open: boolean) => !open && setSelectedPost(null)}
             isLiked={postDetails.isLiked}
             onLike={() => handleToggleLike(postDetails.id)}
+              adminMode={role === "admin" && searchParams.get("mode") === "admin"}
+            reportId={Number(searchParams.get("reportId")) || null}
+
           />
         )}
         {optionsPost && (

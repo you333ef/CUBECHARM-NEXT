@@ -1,108 +1,37 @@
 'use client'
-import { useContext, useEffect, useState } from "react";
-import { FiSearch, FiMoreVertical } from "react-icons/fi";
+import React, { useContext, useEffect, useState } from "react";
+import { FiSearch, FiMoreVertical, FiClock } from "react-icons/fi";
 import { BsCheck, BsCheckAll } from "react-icons/bs";
 import axios from "axios";
 import AuthContext from "@/app/providers/AuthContext";
 import { toast } from 'sonner';
-
-type MessageStatus = "sent" | "delivered" | "read";
+import { useMessagingContext } from "../MessagingContext";
+import { Chat } from "../page";
+import api from "@/app/AuthLayout/refresh";
+type MessageStatus = "sent" | "delivered" | "read" | "pending";
 type FilterType = "all" | "unread" | "archived";
-export interface Chat {
-  id: number;
-  name: string;
-  avatar: string;
-  lastMessage: string;
-  timestamp: string;
-  unread: boolean;
-  status: MessageStatus;
-  archived: boolean;
-}
 interface ChatSidebarProps {
   selectedChat: Chat | null;
   onSelectChat: (chat: Chat) => void;
+  chats: Chat[];
+  setChats: React.Dispatch<React.SetStateAction<Chat[]>>;
+  activeFilter: FilterType;
+  setActiveFilter: (filter: FilterType) => void;
+  searchQuery: string;
+  setSearchQuery: (query: string) => void;
 }
-const ChatSidebar = ({ selectedChat, onSelectChat }: ChatSidebarProps) => {
-  const [searchQuery, setSearchQuery] = useState("");
-  const [activeFilter, setActiveFilter] = useState<FilterType>("all");
+const ChatSidebar = ({ selectedChat, onSelectChat, chats, setChats, activeFilter, setActiveFilter, searchQuery, setSearchQuery }: ChatSidebarProps) => {
   const [openMenuId, setOpenMenuId] = useState<number | null>(null);
-  const [chats, setChats] = useState<Chat[]>([]);
-  const [unreadCount, setUnreadCount] = useState(0);
   const { baseUrl } = useContext(AuthContext)!;
-  const accessToken =
-    typeof window !== "undefined"
-      ? localStorage.getItem("accessToken")
-      : null;
+ 
+  const { unreadCount, refreshUnreadCount } = useMessagingContext();
   const fetchUnreadCount = async () => {
-    try {
-      const response = await axios.get(
-        `${baseUrl}/messaging/conversations/unread-count`,
-        {
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
-          },
-        }
-      );
-      setUnreadCount(response.data?.data?.totalUnread || 0);
-    } catch {
-      setUnreadCount(0);
-    }
+    await refreshUnreadCount();
   };
- const fetchConversations = async () => {
-  try {
-    let response;
-
-    if (searchQuery?.trim().length >= 2) {
-      response = await axios.get(
-        `${baseUrl}/messaging/users/search?q=${encodeURIComponent(searchQuery)}&page=1&pageSize=20`,
-        {
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
-          },
-        }
-      );
-    } else {
-      response = await axios.get(
-        `${baseUrl}/messaging/conversations?filter=${activeFilter}&page=1&pageSize=20`,
-        {
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
-          },
-        }
-      );
-    }
-
-    const data = response.data?.data || [];
-
-    const mappedChats: Chat[] = data.map((item: any) => ({
-      id: item.conversationId ?? item.id,
-      name: item.otherUserName ?? item.fullName ?? `${item.otherUser?.firstName ?? ""} ${item.otherUser?.lastName ?? ""}`.trim() ?? "Unknown",
-      avatar: item.otherUser?.avatarUrl
-        ? `${baseUrl.replace('/api', '')}/${item.otherUser.avatarUrl}`
-        : item.avatarUrl
-        ? `${baseUrl.replace('/api', '')}/${item.avatarUrl}`
-        : "https://i.pravatar.cc/150",
-      lastMessage: item.lastMessage?.text ?? "No messages yet",
-      timestamp: new Date(item.updatedAt ?? Date.now()).toLocaleDateString(),
-      status: "delivered",
-      unread: item.unreadCount > 0,
-
-      archived: item.isArchived ?? false,
-    }));
-
-    console.log("Mapped chats:", mappedChats);
-    setChats(mappedChats);
-
-  } catch (error) {
-    console.error("Error fetching conversations:", error);
-    setChats([]);
-  }
-};
 
   useEffect(() => {
     fetchUnreadCount();
-    fetchConversations();
-  }, [activeFilter, searchQuery]);
+  }, []);
   const filteredChats = chats.filter((chat) => {
     const matchesSearch = chat.name
       .toLowerCase()
@@ -116,9 +45,18 @@ const ChatSidebar = ({ selectedChat, onSelectChat }: ChatSidebarProps) => {
     return matchesSearch && matchesFilter;
   });
   const renderStatus = (status: MessageStatus) => {
+    if (status === "pending") return <FiClock size={18} className="text-gray-500" />;
     if (status === "sent") return <BsCheck size={18} />;
     if (status === "delivered") return <BsCheckAll size={18} />;
     return <BsCheckAll className="text-blue-500" size={18} />;
+  };
+  const getAvatarSrc = (avatar?: string | null) => {
+    if (!avatar) return "/block-Photi.jpg";
+    const trimmed = avatar.trim();
+    if (!trimmed) return "/block-Photi.jpg";
+    const looksLikeHttp = /^https?:\/\//i.test(trimmed);
+    const looksLikeAbsolutePath = trimmed.startsWith("/");
+    return looksLikeHttp || looksLikeAbsolutePath ? trimmed : "/block-Photi.jpg";
   };
   const markAsUnread = (chatId: number) => {
     setChats(prev =>
@@ -137,17 +75,12 @@ const ChatSidebar = ({ selectedChat, onSelectChat }: ChatSidebarProps) => {
     );
     setOpenMenuId(null);
     try {
-      await axios.patch(
-        `${baseUrl}/messaging/conversations/${chatId}/archive`,
+      await api.patch(
+        `/messaging/conversations/${chatId}/archive`,
         {},
-        {
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
-          },
-        }
+        { withCredentials: true }
       );
       toast.success("Conversation archived");
-      fetchConversations();
       fetchUnreadCount();
     } catch (error) {
       console.error("Archive failed", error);
@@ -167,17 +100,12 @@ const ChatSidebar = ({ selectedChat, onSelectChat }: ChatSidebarProps) => {
     );
     setOpenMenuId(null);
     try {
-      await axios.patch(
-        `${baseUrl}/messaging/conversations/${chatId}/unarchive`,
+      await api.patch(
+        `/messaging/conversations/${chatId}/unarchive`,
         {},
-        {
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
-          },
-        }
+      
       );
       toast.success("Conversation unarchived");
-      fetchConversations();
       fetchUnreadCount();
     } catch (error) {
       console.error("Unarchive failed", error);
@@ -189,11 +117,19 @@ const ChatSidebar = ({ selectedChat, onSelectChat }: ChatSidebarProps) => {
       toast.error("Failed to unarchive");
     }
   };
-  const deleteChat = (chatId: number) => {
-    setChats(prev => prev.filter(chat => chat.id !== chatId));
+  const deleteChat = async (chatId: number) => {
     setOpenMenuId(null);
-    fetchUnreadCount();
+    try {
+      await api.delete(`/messaging/conversations/${chatId}`);
+      setChats(prev => prev.filter(chat => chat.id !== chatId));
+      toast.error("Conversation deleted successfully");
+      fetchUnreadCount();
+    } catch (error) {
+     
+      toast.error("Failed to delete conversation");
+    }
   };
+  
   return (
     <div className="w-full md:w-[380px] bg-white border-r flex flex-col h-screen">
       <div className="px-3 py-2">
@@ -239,26 +175,49 @@ const ChatSidebar = ({ selectedChat, onSelectChat }: ChatSidebarProps) => {
               key={chat.id ??  index}
               onClick={() => {
                 setOpenMenuId(null);
+                // Mark as read locally when selecting conversation
+                if (chat.unread) {
+                  setChats(prev =>
+                    prev.map(c =>
+                      c.id === chat.id ? { ...c, unread: false } : c
+                    )
+                  );
+                  refreshUnreadCount();
+                }
                 onSelectChat(chat);
               }}
-              className={`relative flex items-center py-3 px-4 cursor-pointer ${
-                selectedChat?.id === chat.id ? "bg-[#f0f2f5]" : ""
+              className={`relative flex items-center py-3 px-4 cursor-pointer hover:bg-[#f0f2f5] transition-colors ${
+                selectedChat?.id === chat.id ? "bg-[#f0f2f5]" : chat.unread ? "bg-blue-50/50" : ""
               }`}
             >
-              <img
-                src={chat.avatar}
-                className="w-[50px] h-[50px] rounded-lg object-cover"
-              />
+              <div className="relative">
+                <img
+                  src={getAvatarSrc(chat.avatar)}
+                  className="w-[50px] h-[50px] rounded-lg object-cover"
+                  onError={(e) => {
+                    e.currentTarget.src = "/block-Photi.jpg";
+                  }}
+                />
+                
+                {chat.isOnline && (
+                  <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 border-2 border-white rounded-full"></div>
+                )}
+              </div>
               <div className="flex-1 ml-4">
                 <div className="flex justify-between">
                   <p className="font-medium">{chat.name}</p>
-                  <span className="text-xs">{chat.timestamp}</span>
+                  <span className={`text-xs ${chat.unread ? "text-blue-600 font-semibold" : ""}`}>{chat.timestamp}</span>
                 </div>
                 <div className="flex items-center gap-1">
-                  {renderStatus(chat.status)}
-                  <p className={chat.unread ? "font-medium" : ""}>
-                    {chat.lastMessage}
+                  {chat.lastMessageSentByMe && renderStatus(chat.lastMessageStatus || "sent")}
+                  <p className={`truncate max-w-[180px] ${chat.unread ? "font-semibold text-[#111b21]" : "text-gray-500"}`}>
+                    {chat.lastMessage && chat.lastMessage.split(/\s+/).length > 3
+                      ? chat.lastMessage.split(/\s+/).slice(0, 3).join(" ") + "....."
+                      : chat.lastMessage}
                   </p>
+                  {chat.unread && (
+                    <span className="ml-auto w-3 h-3 bg-blue-500 rounded-full flex-shrink-0"></span>
+                  )}
                 </div>
               </div>
               <button

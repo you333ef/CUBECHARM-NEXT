@@ -15,11 +15,13 @@ import {
 } from "react-icons/io5";
 
 import { useState } from "react";
+import { useMessagingContext } from "../../messaes/MessagingContext";
 
 const BottomNavbar = () => {
   const pathname = usePathname();
   const isActive = (path: string) => pathname === path;
   const [isOpen, setIsOpen] = useState(false);
+  const { unreadCount } = useMessagingContext();
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 bg-white border-t-2 border-gray-200 shadow-2xl z-50">
@@ -93,9 +95,11 @@ const BottomNavbar = () => {
               <IoChatbubbleEllipsesOutline size={24} />
             )}
             <span className="text-xs mt-1 font-medium">Messages</span>
-            <span className="absolute top-1 right-1 bg-red-500 text-white text-[10px] font-bold rounded-full w-4 h-4 flex items-center justify-center">
-              3
-            </span>
+            {unreadCount > 0 && (
+              <span className="absolute top-1 right-1 bg-red-500 text-white text-[10px] font-bold rounded-full w-4 h-4 flex items-center justify-center">
+                {unreadCount > 99 ? '99+' : unreadCount}
+              </span>
+            )}
           </Link>
 
           <Link

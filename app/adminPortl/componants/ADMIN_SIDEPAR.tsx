@@ -2,6 +2,7 @@
 import { useRouter } from "next/navigation";
 import React from "react";
 import { FiChevronDown, FiChevronRight } from "react-icons/fi";
+import { FiLogOut } from "react-icons/fi";
 
 // 1
 export interface MenuItem {
@@ -72,6 +73,14 @@ function SidebarContent({ navigate, setMenu, menuItems }: SidebarContentProps) {
 
   // 10
   const handleClick = (item: MenuItem) => {
+    if (item.name === "Logout") {
+      if (typeof window !== "undefined") {
+        localStorage.removeItem("accessToken");
+       
+      }
+      navigate.push("/AuthLayout/Login");
+      return;
+    }
     if (item.path) {
       navigate.push(item.path);
       setMenu((prev) => setActive(prev, item.name));

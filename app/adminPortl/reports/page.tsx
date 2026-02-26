@@ -1,150 +1,171 @@
 "use client";
-
 import React, { useContext, useEffect, useState } from "react";
 import axios from "axios";
-
 import TableShared from "../sharedAdmin/TableShared";
 import { toast } from "sonner";
 import HeadlessDemo from "../sharedAdmin/DELETE_CONFIRM";
 import { FiAlertCircle } from "react-icons/fi";
 import { useRouter } from "next/navigation";
 import AuthContext from "@/app/providers/AuthContext";
-
-// ================= TYPES =================
-interface Report {
-  id: string;
-  title: string;
-  num_reports: number;
-  reason: string;
-  date: string;
-  status: string;
-}
-
-// ================= HELPERS =================
-const formatDate = (dateString: string) => {
-  const d = new Date(dateString);
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(
-    2,
-    "0"
-  )}-${String(d.getDate()).padStart(2, "0")}`;
-};
-
+import { getReports, MappedReport } from "./services/adminReports";
+import api from "@/app/AuthLayout/refresh";
 // ================= COMPONENT =================
 const REPORTS = () => {
   const navigate = useRouter();
   const { baseUrl } = useContext(AuthContext)!;
-
   const accessToken =
-    typeof window !== "undefined"
-      ? localStorage.getItem("accessToken")
-      : null;
+    typeof window !== "undefined" ? localStorage.getItem("accessToken") : null;
 
-  // ================= STATE =================
-  const [DATA_REPORTS, setDATA_REPORTS] = useState<Report[]>([]);
+  const [DATA_REPORTS, setDATA_REPORTS] = useState<MappedReport[]>([]);
+  const [sortOrder, setSortOrder] = useState<"latest" | "oldest">("latest");
   const [confirmBlock, setConfirmBlock] = useState(false);
-  const [confirmDelete, setConfirmDelete] = useState(false);
-  const [selectedItem, setSelectedItem] = useState<Report | null>(null);
-
-  // pagination
+  const [confirmDeleteContent, setConfirmDeleteContent] = useState(false);
+  const [confirmRemoveReport, setConfirmRemoveReport] = useState(false);
+  const [selectedItem, setSelectedItem] = useState<MappedReport | null>(null);
   const [page, setPage] = useState(1);
   const pageSize = 20;
-
-  // ================= TABLE HEADERS =================
-  const headers: (keyof Report)[] = [
+  const headers: (keyof MappedReport)[] = [
     "title",
     "num_reports",
     "reason",
     "date",
     "status",
   ];
-
-  // ================= API CALL =================
+  // ================= FETCH =================
   useEffect(() => {
-    const getReports = async () => {
+    const fetchReports = async () => {
       try {
-        const res = await axios.get(
-          `${baseUrl}/admin/reports?page=${page}&pageSize=${pageSize}`,
-          {
-            headers: {
-              Authorization: `Bearer ${accessToken}`,
-            },
-          }
+        const response = await getReports(
+          baseUrl,
+          accessToken,
+          page,
+          pageSize,
+          sortOrder
         );
 
-        const items = res.data.data.items
-
-        const mappedData: Report[] = items.map((item: any) => ({
-          id: String(item.id),
-          title: `${item.reportType} #${item.referenceId}`,
-          num_reports: 1,
-          reason: item.reason,
-          date: formatDate(item.createdAt),
-          status: item.status,
-        }));
-
-        setDATA_REPORTS(mappedData);
+        const filtered = response.items.filter(item => {
+          return item.propertyId || (item.raw && item.raw.reportType === 'Property');
+        });
+        const sorted = [...filtered].sort((a, b) =>
+          sortOrder === "latest"
+            ? new Date(b.createdAt).getTime() -
+              new Date(a.createdAt).getTime()
+            : new Date(a.createdAt).getTime() -
+              new Date(b.createdAt).getTime()
+        );
+        setDATA_REPORTS(sorted);
       } catch (error) {
         toast.error("Failed to load reports");
         console.error(error);
       }
     };
 
-    getReports();
-  }, [baseUrl, accessToken, page]);
-
+    if (baseUrl && accessToken) {
+      fetchReports();
+    }
+  }, [baseUrl, accessToken, page, sortOrder]);
   // ================= SORT =================
   const handleSort = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const value = e.target.value;
-    const sorted = [...DATA_REPORTS].sort((a, b) =>
-      value === "latest"
-        ? new Date(b.date).getTime() - new Date(a.date).getTime()
-        : new Date(a.date).getTime() - new Date(b.date).getTime()
-    );
-    setDATA_REPORTS(sorted);
+    const value = e.target.value as "latest" | "oldest";
+    setSortOrder(value);
   };
-
+  // ================= HELPERS =================
+  const resolvePropertyId = (item: MappedReport) =>
+    item.propertyId || item.referenceId || item.id;
+  const patchLocalReportStatus = (reportId: string, status: string) => {
+    setDATA_REPORTS((prev) =>
+      prev.map((r) => (r.id === reportId ? { ...r, status } : r))
+    );
+  };
   // ================= ACTIONS =================
-  const handleBlock = (item: Report) => {
-    setDATA_REPORTS((prev) =>
-      prev.map((p) =>
-        p.id === item.id ? { ...p, status: "Blocked" } : p
-      )
-    );
-    toast.error(`User blocked for report ${item.title}`);
-  };
+  const handleBlock = async (item: MappedReport) => {
+    try {
+      const propertyId = resolvePropertyId(item);
 
-  const handleDelete = (item: Report) => {
-    setDATA_REPORTS((prev) =>
-      prev.map((p) =>
-        p.id === item.id ? { ...p, status: "Deleted" } : p
-      )
-    );
-    toast.error(`${item.title} deleted`);
-  };
+      const propertyRes = await api.get(
+        `/Property/${propertyId}`,
+      
+      );
 
-  const confirmBlockAction = () => {
-    if (selectedItem) {
-      handleBlock(selectedItem);
-      setConfirmBlock(false);
-      setSelectedItem(null);
+      const ownerId = propertyRes?.data?.data?.ownerId;
+      if (!ownerId) throw new Error("Owner ID not found");
+
+      await api.post(
+        `/admin/users/${ownerId}/ban`,
+        {}
+      );
+
+      await api.patch(
+        `/admin/reports/${item.id}/status`,
+        { status: "Resolved", adminNotes: "User banned by admin" }
+      );
+
+      patchLocalReportStatus(item.id, "Resolved");
+       cancelAnyConfirm();
+      toast.success(`User banned and report resolved`);
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || err.message);
+      console.error(err);
     }
   };
+ const handleDeleteContent = async (item: MappedReport) => {
+  try {
+    const propertyId = resolvePropertyId(item);
 
-  const confirmDeleteAction = () => {
-    if (selectedItem) {
-      handleDelete(selectedItem);
-      setConfirmDelete(false);
-      setSelectedItem(null);
+   
+    await api.delete(
+      `/admin/properties/${propertyId}`,
+    );
+
+    
+    await api.delete(
+      `/admin/reports/${item.id}`,
+    );
+
+    
+    setDATA_REPORTS((prev) => prev.filter((r) => r.id !== item.id));
+
+    cancelAnyConfirm();
+
+    toast.success(`Content and report deleted`);
+  } catch (err: any) {
+    toast.error(err?.response?.data?.message || err.message);
+    console.error(err);
+  }
+};
+
+  const handleDismiss = async (item: MappedReport) => {
+    try {
+      await api.patch(
+        `/admin/reports/${item.id}/status`,
+        { status: "Dismissed", adminNotes: "Report dismissed by admin" }
+      );
+
+      patchLocalReportStatus(item.id, "Dismissed");
+      toast.success(`Report dismissed`);
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || err.message);
+      console.error(err);
     }
   };
+  const handleRemoveReport = async (item: MappedReport) => {
+    try {
+      await api.delete(
+        `/admin/reports/${item.id}`
+      );
 
-  const cancelBlockAction = () => {
+      setDATA_REPORTS((prev) => prev.filter((r) => r.id !== item.id));
+      toast.success(`Report removed`);
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || err.message);
+      console.error(err);
+    }
+  };
+  // ================= CONFIRM =================
+  const cancelAnyConfirm = () => {
     setConfirmBlock(false);
-    setSelectedItem(null);
-  };
-
-  const cancelDeleteAction = () => {
-    setConfirmDelete(false);
+    setConfirmDeleteContent(false);
+    setConfirmRemoveReport(false);
     setSelectedItem(null);
   };
 
@@ -154,49 +175,77 @@ const REPORTS = () => {
       <div className="flex items-center justify-center mb-8">
         <h1 className="text-2xl font-semibold flex items-center gap-2 text-gray-800">
           <FiAlertCircle className="text-black text-3xl" />
-          Reports Page
+          Reports Properties
         </h1>
       </div>
 
       <div className="flex justify-end mb-6">
         <select
           onChange={handleSort}
+          value={sortOrder}
           className="border border-gray-300 rounded-lg px-4 py-2 text-sm bg-white shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
         >
-          <option value="oldest">Oldest to Latest</option>
           <option value="latest">Latest to Oldest</option>
+          <option value="oldest">Oldest to Latest</option>
         </select>
       </div>
 
-      <TableShared<Report>
+      <TableShared<MappedReport>
         rows={DATA_REPORTS}
         T_Head={headers}
         funApprove={(item) => {
           setSelectedItem(item);
-          setConfirmDelete(true);
+          setConfirmDeleteContent(true);
         }}
         funReject={(item) => {
           setSelectedItem(item);
           setConfirmBlock(true);
         }}
-        funView={(item) =>
-          navigate.push(`/userportal/readmore/${item.id}`)
-        }
+        funView={(item) => {
+          const propertyId = resolvePropertyId(item);
+         navigate.replace(
+  `/userportal/property/${propertyId}?mode=admin&from=reports&reportId=${item.id}`
+);
+
+        }}
+        funRemove={(item) => {
+          setSelectedItem(item);
+          setConfirmRemoveReport(true);
+        }}
+        funShowReason={(item) => {
+          handleDismiss(item);
+        }}
+        headerDisplayNames={{
+          title: "Reported Item",
+          num_reports: "Reports",
+          reason: "Reason",
+          date: "Date",
+          status: "Status",
+        }}
       />
 
       {confirmBlock && selectedItem && (
         <HeadlessDemo
-          DeleteTrue={confirmBlockAction}
-          onCancel={cancelBlockAction}
+          DeleteTrue={() => handleBlock(selectedItem)}
+          onCancel={cancelAnyConfirm}
           name={selectedItem.title}
           actionType="block"
         />
       )}
 
-      {confirmDelete && selectedItem && (
+      {confirmDeleteContent && selectedItem && (
         <HeadlessDemo
-          DeleteTrue={confirmDeleteAction}
-          onCancel={cancelDeleteAction}
+          DeleteTrue={() => handleDeleteContent(selectedItem)}
+          onCancel={cancelAnyConfirm}
+          name={selectedItem.title}
+          actionType="delete"
+        />
+      )}
+
+      {confirmRemoveReport && selectedItem && (
+        <HeadlessDemo
+          DeleteTrue={() => handleRemoveReport(selectedItem)}
+          onCancel={cancelAnyConfirm}
           name={selectedItem.title}
           actionType="delete"
         />
@@ -204,5 +253,4 @@ const REPORTS = () => {
     </div>
   );
 };
-
 export default REPORTS;

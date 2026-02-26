@@ -7,10 +7,9 @@ import CategoryDropdown from "../componants/shared/CategoryDropdown";
 import { useContext, useEffect, useRef } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { toast } from "sonner";
-import AuthContext from "@/app/providers/AuthContext";
 import { useAdForm, type FormData } from "../hooks/useAdForm.logic";
 import { useAdMedia } from "../hooks/useAdMedia.logic";
-import axios from "axios";
+import api from "@/app/AuthLayout/refresh";
 const CreateAd = () => {
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -18,42 +17,27 @@ const CreateAd = () => {
   const source = searchParams.get("source");
   const isUpdate = !!propertyId;
   const isProMode = source === "new_upload_with_pro_mode";
-  
-  // Prevent  sync calls
-  const hasLoadedMediaRef = useRef(false);
+    const hasLoadedMediaRef = useRef(false);
 
-  const { baseUrl } = useContext(AuthContext)!;
-  const token =
-    typeof window !== "undefined"
-      ? localStorage.getItem("accessToken")
-      : null;
 
-  // media logic first
-  const adMedia = useAdMedia({
-    baseUrl: baseUrl || "",
-    token: token || "",
-  });
 
-  //form logic WITHOUT onMediaSync callback
+
   const form = useAdForm({
     isUpdate,
     propertyId,
     onMediaSync: undefined,
   });
+  const adMedia = useAdMedia({ baseUrl: "http://localhost:5000" });
 
-  // Fetch and sync media separately for update mode
   useEffect(() => {
-    // Only run once and only in update mode
-    if (!isUpdate || !propertyId || !token || hasLoadedMediaRef.current) return;
+    if (!isUpdate || !propertyId || hasLoadedMediaRef.current) return;
 
     hasLoadedMediaRef.current = true;
 
     const fetchMedia = async () => {
       try {
-        const res = await axios.get(`${baseUrl}/Property/${propertyId}`, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
+        const res = await api.get(`/Property/${propertyId}`, {
+         
         });
 
         const mediaData = res.data.data?.media || [];
@@ -66,13 +50,11 @@ const CreateAd = () => {
     };
 
     fetchMedia();
-  }, [isUpdate, propertyId, token, baseUrl, adMedia]);
+  }, [isUpdate, propertyId, adMedia]);
 
-  // Destructure form methods and state
   const { register, formState: { errors }, handleSubmit } = form;
 
   const handleFormSubmit = async (data: FormData) => {
-    // Validate media count
     const validation = adMedia.validateMedia();
     if (!validation.hasMinimum) {
       toast.error(
@@ -81,33 +63,38 @@ const CreateAd = () => {
       return;
     }
 
+    if (validation.mainCount === 0) {
+      toast.error("Please set at least one image as Main before submitting.");
+      return;
+    }
+
     try {
-      // Submit form and get the created/updated property ID
       const createdPropertyId = await form.onSubmit(data);
 
-      // Upload new media for both create and update modes
       if (createdPropertyId && adMedia.media.some((m) => m.status === "pending")) {
         await adMedia.uploadNewMedia(createdPropertyId);
       }
 
-      // Handle routing after success
       if (isUpdate) {
-        // Update mode - already handled in form.onSubmit with toast
         return;
       }
 
-      // Create mode -  success and redirect based on source
-      toast.success("Announcement created successfully!");
+      
+
+if (!createdPropertyId) {
+  toast.error("Server did not return property id");
+  return;
+}
+
+toast.success("Announcement created successfully!");
       
       if (isProMode) {
-        // Redirect to ProMode
 
         router.push(
           `/userportal/proMode?id=${createdPropertyId}&source=new_upload_with_pro_mode`
         );
       } else {
-        // Redirect to property page
-        router.push(`/userportal/property/${createdPropertyId}`);
+router.push(`/userportal/property/${createdPropertyId}`);
       }
     } catch (error) {
       console.error("Form submission error:", error);
@@ -137,12 +124,14 @@ const CreateAd = () => {
               </div>
 
               {/* Category */}
+              {!isUpdate && (
               <div className="md:col-span-5">
                 <CategoryDropdown {...register("category", { required: "Category is required" })} />
                 {errors.category && <p className="text-red-500 text-sm mt-1">{errors.category.message}</p>}
               </div>
+              )}
 
-              {/* Listing Type (rent / sale) */}
+              {/* Listing Type */}
               <div className="md:col-span-5">
                 <label className="block text-sm font-medium text-gray-700 mb-2">Listing Type</label>
                 <select
@@ -150,7 +139,7 @@ const CreateAd = () => {
                   className={`p-3 border rounded-lg w-full bg-gray-50 ${errors.listingType ? "border-red-500" : ""}`}>
                  
                   <option value="rent">Rent</option>
-                  <option value="rent">Daily Rental</option>
+                  <option value="daily">Daily Rental</option>
                   <option value="sale">Sale</option>
 
                 </select>
@@ -226,6 +215,7 @@ const CreateAd = () => {
               </div>
 
             {/* Phone */}
+              {!isUpdate && (
               <div className="md:col-span-5">
                 <Input
                   placeholder="Phone"
@@ -235,6 +225,7 @@ const CreateAd = () => {
                 />
                 {errors.phone && <p className="text-red-500 text-sm mt-1">{errors.phone.message}</p>}
               </div>
+              )}
 
 
  <div className="grid md:grid-cols-2 gap-4 md:col-span-5">
@@ -278,20 +269,6 @@ const CreateAd = () => {
 
 </div>
 
-
-
-              {/* Negotiable checkbox (optional) */}
-              <div className="md:col-span-5">
-                <div className="flex items-center gap-3">
-                  <input
-                    type="checkbox"
-                    {...register("negotiable")}
-                    id="negotiable"
-                    className="h-4 w-4 text-blue-600 border-gray-300 rounded"
-                  />
-                  <label htmlFor="negotiable" className="text-gray-700">Negotiable</label>
-                </div>
-              </div>
               {/* Description */}
               <div className="md:col-span-5">
                 <Textarea
@@ -394,7 +371,7 @@ const CreateAd = () => {
                   </div>
                 )}
 
-                {/* Upload Section - Show After Gallery */}
+                {/* Upload Section  Show After Gallery */}
                 <div className="space-y-4">
                   {/* Images Upload */}
                   <div className="border-2 border-dashed border-gray-300 rounded-xl p-8 text-center bg-gray-50">
@@ -435,7 +412,7 @@ const CreateAd = () => {
                 </div>
               </div>
 
-              {/* Submit (Create / Update) - must be last */}
+              {/* Submit  must be last */}
               <div className="md:col-span-5">
                 <Button
                   name={isUpdate ? "Update Announcement" : "Create Announcement"}
@@ -453,9 +430,9 @@ const CreateAd = () => {
 
 };
 
-// MediaCard Component - Reusable media preview with actions
+// MediaCard Component 
 interface MediaCardProps {
-  item: any; // AdMedia type
+  item: any;
   index: number | string;
   isApiMedia: boolean;
   isUpdateMode: boolean;
@@ -509,7 +486,7 @@ const MediaCard = ({
         </span>
       )}
 
-      {/* Status Indicator - Blue Background */}
+      {/* Status Indicator  Blue Background */}
       {item.status === "pending" && (
         <span className="absolute top-2 right-2 bg-blue-600 text-white text-xs px-2 py-1 rounded-full">
           Uploading...

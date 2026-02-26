@@ -8,12 +8,14 @@ import axios from "axios";
 import { toast } from "sonner";
 import AuthContext from "@/app/providers/AuthContext";
 import { useRouter } from "next/navigation";
+import { getToken } from "@/app/AuthLayout/Token_Manager";
+import api from "@/app/AuthLayout/refresh";
 
 const UpdateProfile = () => {
   const { baseUrl } = useContext(AuthContext)!;
   const accessToken =
     typeof window !== "undefined"
-      ? localStorage.getItem("accessToken")
+      ? getToken()
       : null;
 
   const navi = useRouter();
@@ -51,9 +53,7 @@ const UpdateProfile = () => {
 
   const fetchProfile = async () => {
     try {
-      const res = await axios.get(`${baseUrl}/users/profiles/me`, {
-        headers: { Authorization: `Bearer ${accessToken}` },
-      });
+      const res = await api.get(`/users/profiles/me`);
 
       if (res.data?.success) {
         const data = res.data.data;
@@ -101,14 +101,9 @@ const UpdateProfile = () => {
 
       if (file) payload.append("ProfilePicture", file);
 
-      const res = await axios.patch(
-        `${baseUrl}/users/profiles/me`,
-        payload,
-        {
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
-          },
-        }
+      const res = await api.patch(
+        `/users/profiles/me`,
+        payload
       );
 
       if (res.data?.success) {

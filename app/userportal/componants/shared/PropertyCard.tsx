@@ -5,15 +5,14 @@ import { IoMdHeartEmpty, IoMdHeart, IoMdStar } from "react-icons/io";
 import { GrLocation } from "react-icons/gr";
 import { BsThreeDotsVertical } from "react-icons/bs";
 import { MdChevronLeft, MdChevronRight } from "react-icons/md";
-import { IoEyeOutline } from "react-icons/io5";
-
+import { IoEyeOutline, IoImageOutline } from "react-icons/io5";
 import { useRouter } from "next/navigation";
 import AuthContext from "@/app/providers/AuthContext";
-import axios from "axios";
 import { toast } from "sonner";
 import ReportModal from "../../componants/shared/ReportModal";
 import ConfirmDeleteModal from '../../../adminPortl/sharedAdmin/DELETE_CONFIRM';
 import { usePropertyCardActions } from "../hooks/usePropertyCardActions";
+import api from "@/app/AuthLayout/refresh";
 
 interface PropertyCardProps {
   id: number;
@@ -34,8 +33,8 @@ interface PropertyCardProps {
   ownerProfileImage: string;
   ownerRating: number;
   ownerUserId: string;
+  fetchProperties?:any;
   onRemoveFavorite?: () => void;
-  fetchProperties?:any
 }
 interface ActionItem {
   label: string;
@@ -64,15 +63,14 @@ const PropertyCard: React.FC<PropertyCardProps> = ({
   ownerUserId,
   onRemoveFavorite,
 }) => {
-  const [internalFavorite, setInternalFavorite] = useState(false);
-  const isFavorite = propIsFavorite !== undefined ? propIsFavorite : internalFavorite;
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const router = useRouter();
   const auth = useContext(AuthContext)!;
-  const { baseUrl } = auth;
+  const { baseUrl, favoriteIds, toggleFavoriteId } = auth;
   const BASE_URL = "http://localhost:5000";
-  const accessToken =
-    typeof window !== "undefined" ? localStorage.getItem("accessToken") : null;
+  
+
+  const isFavorite = favoriteIds.has(Number(id));
 
   const currentUserId = auth.user?.sub;
   const isOwner = currentUserId == ownerUserId;
@@ -101,7 +99,6 @@ const PropertyCard: React.FC<PropertyCardProps> = ({
     ownerName,
     fetchProperties,
     baseUrl,
-    accessToken: accessToken,
     router,
   });
 
@@ -115,36 +112,32 @@ const PropertyCard: React.FC<PropertyCardProps> = ({
   const handleCardClick = () => {
     router.push(`/userportal/property/${id}`);
   }
-  const handleFavoriteClick = async (e: React.MouseEvent, propertyId: number) => {
+const handleFavoriteClick = async (e: React.MouseEvent, propertyId: number) => {
     e.stopPropagation();
-    if (!accessToken) return;
+  
+
+    const wasFavorite = isFavorite;
 
     try {
-      if (propIsFavorite && onRemoveFavorite) {
-        onRemoveFavorite();
-        return;
-      }
+        if (!wasFavorite) {
+            await api.post(`/favourite/property/${propertyId}`, {}, );
+            toggleFavoriteId(propertyId, true);
+            toast.success("Added to favorites");
+        } else {
+            await api.delete(`/favourite/property/${propertyId}`, 
+     
+          );
+            toggleFavoriteId(propertyId, false);
+            toast.success("Removed from favorites");
 
-      if (!isFavorite) {
-        const res = await axios.post(
-          `${baseUrl}/favourite/property/${propertyId}`,
-          {},
-          { headers: { Authorization: `Bearer ${accessToken}` } }
-        );
-        if (res.data?.success && propIsFavorite === undefined) {
-          setInternalFavorite(true);
+            if (onRemoveFavorite) onRemoveFavorite();
         }
-      } else {
-        const res = await axios.delete(
-          `${baseUrl}/favourite/property/${propertyId}`,
-          { headers: { Authorization: `Bearer ${accessToken}` } }
-        );
-        if (res.data?.success && propIsFavorite === undefined) {
-          setInternalFavorite(false);
-        }
-      }
-    } catch {}
-  };
+    } catch (err) {
+        toggleFavoriteId(propertyId, wasFavorite);
+        toast.error("Something went wrong");
+    }
+};
+
 
   const handlePrevImage = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -196,15 +189,20 @@ const PropertyCard: React.FC<PropertyCardProps> = ({
         </div>
 
         <div className="relative">
-          <img
-            src={formattedImages[currentImageIndex] || "/placeholder.jpg"}
-            alt={title}
-            width={600}
-            height={400}
-            className="w-full h-64 object-cover"
-            // priority={currentImageIndex === 0}
-            // unoptimized
-          />
+          {formattedImages.length > 0 ? (
+            <img
+              src={formattedImages[currentImageIndex]}
+              alt={title}
+              width={600}
+              height={400}
+              className="w-full h-64 object-cover"
+            />
+          ) : (
+            <div className="w-full h-64 bg-gray-100 flex flex-col items-center justify-center">
+              <IoImageOutline className="text-gray-300" size={48} />
+              <span className="text-gray-400 text-sm mt-2">No image available</span>
+            </div>
+          )}
 
           {hasSlider && (
             <>

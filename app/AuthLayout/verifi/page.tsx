@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 import { useContext, useState } from "react";
 import AuthContext from "@/app/providers/AuthContext";
 import { toast } from "sonner";
+import api from "../refresh";
+import axios from "axios";
 
 type VerifyForm = {
   email: string;
@@ -15,38 +17,55 @@ type VerifyForm = {
 export default function VerifyPage() {
   const router = useRouter();
   const { baseUrl } = useContext(AuthContext)!;
-  const [isResending, setIsResending] = useState(false);
-
-  const { register, handleSubmit, formState: { errors }, watch } = useForm<VerifyForm>();
-
+  const [isResending, setIsResending] = useState(false)
+  const { register, handleSubmit, formState: { errors }, watch } = useForm<VerifyForm>()
+  
   const onSubmit = async (data: VerifyForm) => {
-    try {
-      const res = await fetch(`${baseUrl}/Auth/verify-otp`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: data.email, otp: data.otp }),
-      });
+  try {
+   
 
-      const result = await res.json();
+    const res = await api.post(
+      `/Auth/verify-otp`,
+      {
+        email: data.email,
+        otp: data.otp,
+      },
+      
+    );
 
-      if (res.ok && result.success) {
-        localStorage.setItem("resetToken", result.accessToken);
-        toast.success("Verification successful");
-        router.push("/AuthLayout/Login");
+    const result = res.data;
+
+    if (res.status === 200 && result.success) {
+   
+      toast.success("Verification successful");
+      router.push("/AuthLayout/Login");
+    } else {
+      if (Array.isArray(result.errors)) {
+        result.errors.forEach((err: string) => toast.error(err));
       } else {
-        if (Array.isArray(result.errors)) {
-          result.errors.forEach((err: string) => toast.error(err));
-        } else {
-          toast.error(result.message || "Verification failed");
-        }
+        toast.error(result.message || "Verification failed");
       }
-    } catch (error) {
-      toast.error("Network error, please try again");
-      console.error("OTP verification error:", error);
     }
-  };
+  } catch (error: any) {
+    if (axios.isAxiosError(error)) {
+      if (error.response?.status === 401) {
+        localStorage.removeItem("accessToken");
+        router.push("/AuthLayout/Login");
+      }
 
-  const resendCode = async () => {
+      toast.error(
+        error.response?.data?.message ||
+        "Network error, please try again"
+      );
+    } else {
+      toast.error("Unexpected error occurred");
+    }
+
+    console.error("OTP verification error:", error);
+  }
+};
+  
+ const resendCode = async () => {
     setIsResending(true);
     try {
       const email = watch("email");
@@ -56,28 +75,29 @@ export default function VerifyPage() {
         return;
       }
 
-      const res = await fetch(`${baseUrl}/Auth/resend-otp`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email }),
-      });
+      const res = await api.post(`/Auth/resend-otp`, {
+        email,
+      }
+    );
+      const result = res.data;
 
-      const result = await res.json();
-
-      if (res.ok && result.success) {
+      if (res.status === 200 && result.success) {
         toast.success("OTP resent successfully");
       } else {
         toast.error(result.message || "Resend failed");
       }
-    } catch (error) {
-      toast.error("Network error, please try again");
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || "Network error, please try again");
       console.error("Resend OTP error:", error);
     } finally {
       setIsResending(false);
     }
   };
 
+
   const goToLogin = () => router.push("/AuthLayout/Login");
+
+
 
   return (
     <div className="flex justify-center items-center h-screen bg-[#FFFFFF] p-3">

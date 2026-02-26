@@ -17,13 +17,15 @@ import {
 import Skeleton from "react-loading-skeleton";
 import "react-loading-skeleton/dist/skeleton.css";
 import AuthContext from "@/app/providers/AuthContext";
+import { getToken } from "@/app/AuthLayout/Token_Manager";
+import api from "@/app/AuthLayout/refresh";
 
 
 const ProfileInfo = () => {
   const { baseUrl } = useContext(AuthContext)!;
   const accessToken =
     typeof window !== "undefined"
-      ? localStorage.getItem("accessToken")
+      ? getToken()
       : null;
 
   const [profileInfo, setProfileInfo] = useState<any>(null);
@@ -31,9 +33,7 @@ const ProfileInfo = () => {
 
   const FetchProfile_Info = async () => {
     try {
-      const res = await axios.get(`${baseUrl}/users/profiles/me`, {
-        headers: { Authorization: `Bearer ${accessToken}` },
-      });
+      const res = await api.get(`/users/profiles/me`);
 
       if (res.data?.success) {
         setProfileInfo(res.data.data);

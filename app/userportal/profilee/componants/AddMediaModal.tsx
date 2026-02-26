@@ -1,15 +1,14 @@
 "use client";
 
-import React, { useState, useRef, useContext } from "react";
-import axios from "axios";
+import React, { useState, useContext } from "react";
 import { FaTimes } from "react-icons/fa";
 import { toast } from "sonner";
 import AuthContext from "@/app/providers/AuthContext";
+import api from "@/app/AuthLayout/refresh";
+import MediaUploader from ".././ComPonatntModals.tsx/shared/MediaUploader";
 
 type Mode = "user" | "admin";
-type Flow =
-  | "addStory"          
-  | "addStoryToAlbum"|'addStoryOnly'; 
+type Flow = "addStory" | "addStoryToAlbum" | "addStoryOnly";
 type action = "add" | "edit";
 
 interface AddMediaModalProps {
@@ -20,7 +19,27 @@ interface AddMediaModalProps {
   mode?: Mode;
   flow?: Flow;
   action?: action;
-  
+  adminAlbums?: { id: number; albumName: string }[];
+  onCreateAlbum?: (
+    albumName: string,
+    stories: {
+      slides: {
+        file: File;
+        mediaType: "Image" | "Video";
+        duration: number;
+        order: number;
+      }[];
+    }[]
+  ) => Promise<any>;
+  onAddStoryToAlbum?: (
+    albumId: number,
+    slides: {
+      file: File;
+      mediaType: "Image" | "Video";
+      duration: number;
+      order: number;
+    }[]
+  ) => Promise<any>;
 }
 
 const AddMediaModal = ({
@@ -29,102 +48,145 @@ const AddMediaModal = ({
   isPost,
   onStoryAdded,
   mode = "user",
-  flow="addStory",
+  flow = "addStory",
   action,
-  
+  adminAlbums = [],
+  onCreateAlbum,
+  onAddStoryToAlbum,
 }: AddMediaModalProps) => {
   if (!isOpen) return null;
 
   const { baseUrl } = useContext(AuthContext)!;
-
-  const accessToken =
-    typeof window !== "undefined"
-      ? localStorage.getItem("accessToken")
-      : null;
-
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [description, setDescription] = useState("");
   const [link, setLink] = useState("");
   const [loading, setLoading] = useState(false);
-  /* ---------- ADMIN STATES (NEW) ---------- */
+  const [albumName, setAlbumName] = useState("");
   const [selectedAlbum, setSelectedAlbum] = useState<string>("");
   const [timer, setTimer] = useState<number | "">("");
   const [albumTimer, setAlbumTimer] = useState<number | "">("");
   const [storyTimer, setStoryTimer] = useState<number | "">("");
-  const [adminTimer, setAdminTimer] = useState<number | "">("");
-  /* ---------------- File Handlers ---------------- */
-  const handleFileSelect = (file: File) => {
-    if (!file.type.startsWith("image/") && !file.type.startsWith("video/")) {
-      toast.error("Please select an image or video");
-      return;
-    }
+  const [adminTimer, setAdminTimer] = useState<string>("");
+
+  const handleMediaSelect = (file: File | null) => {
+    if (previewUrl) URL.revokeObjectURL(previewUrl);
     setSelectedFile(file);
-    setPreviewUrl(URL.createObjectURL(file));
+    setPreviewUrl(file ? URL.createObjectURL(file) : null);
   };
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) handleFileSelect(file);
-  };
-  const handleDragOver = (e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-  };
-  const handleDrop = (e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    const file = e.dataTransfer.files?.[0];
-    if (file) handleFileSelect(file);
-  };
-  const openFilePicker = () => fileInputRef.current?.click();
-  /* ---------------- API Call ---------------- */
+
   const handlePublish = async () => {
     if (!selectedFile) {
-      toast.error("Media file is required");
+      toast.error("Image or video is required");
       return;
+    }
+
+    if (
+      !selectedFile.type.startsWith("image/") &&
+      !selectedFile.type.startsWith("video/")
+    ) {
+      toast.error("Only image or video allowed");
+      return;
+    }
+
+    const maxBytes = 50 * 1024 * 1024;
+    if (selectedFile.size > maxBytes) {
+      toast.error("File size must be 50MB or less");
+      return;
+    }
+
+    const mediaType: "Image" | "Video" = selectedFile.type.startsWith("image/")
+      ? "Image"
+      : "Video";
+
+    const duration = mediaType === "Video" ? 10 : 5;
+    if (duration < 1 || duration > 60) {
+      toast.error("Duration must be between 1 and 60 seconds");
+      return;
+    }
+
+    if (mode === "admin") {
+      if (flow === "addStoryToAlbum") {
+        const albumName =
+          (adminTimer && adminTimer.trim()) || selectedAlbum || "";
+        if (!albumName || albumName.length < 3) {
+          toast.error("Album name is required (min 3 chars)");
+          return;
+        }
+      }
+
+      if (flow === "addStory") {
+        if (!selectedAlbum) {
+          toast.error("Please select an album");
+          return;
+        }
+        const albumId = Number(selectedAlbum);
+        if (Number.isNaN(albumId) || albumId <= 0) {
+          toast.error("Invalid album id");
+          return;
+        }
+      }
     }
 
     try {
       setLoading(true);
 
+      const slidesPayload = [
+        {
+          file: selectedFile,
+          mediaType,
+          duration,
+          order: 1,
+        },
+      ];
+
+      if (mode === "admin") {
+        if (flow === "addStoryToAlbum") {
+          if (!onCreateAlbum) {
+            toast.error("Admin create handler not provided");
+            return;
+          }
+          const albumName =
+            (adminTimer && adminTimer.trim()) ||
+            selectedAlbum ||
+            "New Album";
+          await onCreateAlbum(albumName, [{ slides: slidesPayload }]);
+          toast.success("Album & Story created");
+          handleClose();
+          return;
+        }
+
+        if (flow === "addStory") {
+          if (!onAddStoryToAlbum) {
+            toast.error("Admin add-story handler not provided");
+            return;
+          }
+          const albumId = Number(selectedAlbum);
+          await onAddStoryToAlbum(albumId, slidesPayload);
+          toast.success("Story added to album");
+          handleClose();
+          return;
+        }
+
+        toast.error("Invalid admin flow");
+        return;
+      }
+
       const formData = new FormData();
       formData.append("Slides[0].MediaFile", selectedFile);
-      formData.append("Slides[0].DisplayOrder", "1");
+      formData.append("Slides[0].MediaType", mediaType);
+      formData.append("Slides[0].Duration", String(duration));
+      formData.append("Slides[0].Order", "1");
 
       if (description.trim()) {
         formData.append("Slides[0].Caption", description.trim());
       }
-
       if (link.trim()) {
         formData.append("Slides[0].LinkUrl", link.trim());
       }
 
-      /* ---------- ADMIN DATA (READY FOR BACKEND) ---------- */
-      if (mode === "admin") {
-        if (selectedAlbum) {
-          formData.append("AlbumId", selectedAlbum);
-        }
-        if (flow === "addStoryToAlbum") {
-          formData.append("CreateNewAlbum", "true");
-        }
-
-        if (timer !== "") {
-          formData.append("Timer", timer.toString());
-        }
-      }
-
-      const response = await axios.post(
-        `${baseUrl}/stories`,
-        formData,
-        {
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
-            "Content-Type": "multipart/form-data",
-          },
-        }
-      );
+      const response = await api.post(`/stories`, formData);
 
       if (response.data?.success) {
         toast.success(response.data.message || "Story added successfully");
@@ -144,7 +206,7 @@ const AddMediaModal = ({
       setLoading(false);
     }
   };
-  /* ---------------- Close ---------------- */
+
   const handleClose = () => {
     if (previewUrl) URL.revokeObjectURL(previewUrl);
     setSelectedFile(null);
@@ -158,243 +220,149 @@ const AddMediaModal = ({
     setAdminTimer("");
     onClose();
   };
-  /* ---------------- UI ---------------- */
-const isEditAlbum = action === "edit" && flow === "addStoryToAlbum";
-const isEditStory = action === "edit" && flow === "addStory";
-const getModalTitle = () => {
-  // ---------- EDIT ----------
-  if (action === "edit") {
-    if (flow === "addStory") {
-      return mode === "admin"
-        ? "Update Story (Admin)"
-        : "Update Story";
-    }
 
+  const isEditAlbum = action === "edit" && flow === "addStoryToAlbum";
+  const isEditStory = action === "edit" && flow === "addStory";
+
+  const getModalTitle = () => {
+    if (action === "edit") {
+      if (flow === "addStory") {
+        return mode === "admin" ? "Update Story (Admin)" : "Update Story";
+      }
+      if (flow === "addStoryToAlbum") {
+        return mode === "admin" ? "Update Album (Admin)" : "Update Album";
+      }
+    }
     if (flow === "addStoryToAlbum") {
-      return mode === "admin"
-        ? "Update Album (Admin)"
-        : "Update Album";
+      return mode === "admin" ? "Add Album & Story (Admin)" : "Add Album & Story";
     }
-  }
+    return mode === "admin" ? "Add Story (Admin)" : "Add Story (User)";
+  };
 
-  // ---------- ADD ----------
-  if (flow === "addStoryToAlbum") {
-    return mode === "admin"
-      ? "Add Album & Story (Admin)"
-      : "Add Album & Story";
-  }
-
-  return mode === "admin"
-    ? "Add Story (Admin)"
-    : "Add Story (User)";
-};
   return (
- <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
-  <div className="bg-white rounded-2xl w-full max-w-md p-5 space-y-4">
- <div className="flex justify-between items-center">
-  <h2 className="text-lg font-semibold">
-    {getModalTitle()}
-  </h2>
-  <button
-    onClick={handleClose}
-    className="text-gray-500 hover:text-gray-700"
-  >
-    <FaTimes size={20} />
-  </button>
-</div>
-{isEditAlbum ? (
-  <>
-    <input
-      type="text"
-      placeholder="Album Title"
-      value={selectedAlbum}
-      onChange={(e) => setSelectedAlbum(e.target.value)}
-      className="w-full px-3 py-2 text-sm border rounded-lg"
-    />
-
-    <div className="flex justify-end gap-3 pt-2">
-      <button
-        onClick={handleClose}
-        className="px-4 py-2 text-sm bg-gray-200 rounded-lg"
-      >
-        Cancel
-      </button>
-      <button
-        onClick={handleClose}
-        className="px-5 py-2 text-sm bg-blue-600 text-white rounded-lg"
-      >
-        Update
-      </button>
-    </div>
-  </>
-) : isEditStory ? (
-  <>
-    <input
-      type="text"
-      placeholder="Caption Story"
-      value={description}
-      onChange={(e) => setDescription(e.target.value)}
-      className="w-full px-3 py-2 text-sm border rounded-lg"
-    />
-
-    <div className="flex justify-end gap-3 pt-2">
-      <button
-        onClick={handleClose}
-        className="px-4 py-2 text-sm bg-gray-200 rounded-lg"
-      >
-        Cancel
-      </button>
-      <button
-        onClick={handleClose}
-        className="px-5 py-2 text-sm bg-blue-600 text-white rounded-lg"
-      >
-        Update
-      </button>
-    </div>
-  </>
-) : (
-  <>
-    <div
-      onClick={openFilePicker}
-      onDragOver={handleDragOver}
-      onDrop={handleDrop}
-      className="border-2 border-dashed border-gray-300 rounded-xl cursor-pointer overflow-hidden"
-    >
-      {!selectedFile && (
-        <div className="py-10 text-center text-gray-500">
-          <p className="font-medium">Drag & drop or click to upload</p>
-          <p className="text-xs mt-1">(Image || Video)</p>
+    <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-2xl w-full max-w-md p-5 space-y-4">
+        <div className="flex justify-between items-center">
+          <h2 className="text-lg font-semibold">{getModalTitle()}</h2>
+          <button onClick={handleClose} className="text-gray-500 hover:text-gray-700">
+            <FaTimes size={20} />
+          </button>
         </div>
-      )}
 
-      {selectedFile && previewUrl &&
-        (selectedFile.type.startsWith("image/") ? (
-          <img
-            src={previewUrl}
-            className="w-full max-w-[320px] h-[180px] object-contain bg-black mx-auto rounded-lg"
-          />
+        {isEditAlbum ? (
+          <>
+            <input
+              type="text"
+              placeholder="Album Title"
+              value={selectedAlbum}
+              onChange={(e) => setSelectedAlbum(e.target.value)}
+              className="w-full px-3 py-2 text-sm border rounded-lg"
+            />
+            <div className="flex justify-end gap-3 pt-2">
+              <button onClick={handleClose} className="px-4 py-2 text-sm bg-gray-200 rounded-lg">
+                Cancel
+              </button>
+              <button onClick={handleClose} className="px-5 py-2 text-sm bg-blue-600 text-white rounded-lg">
+                Update
+              </button>
+            </div>
+          </>
+        ) : isEditStory ? (
+          <>
+            <input
+              type="text"
+              placeholder="Caption Story"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              className="w-full px-3 py-2 text-sm border rounded-lg"
+            />
+            <div className="flex justify-end gap-3 pt-2">
+              <button onClick={handleClose} className="px-4 py-2 text-sm bg-gray-200 rounded-lg">
+                Cancel
+              </button>
+              <button onClick={handleClose} className="px-5 py-2 text-sm bg-blue-600 text-white rounded-lg">
+                Update
+              </button>
+            </div>
+          </>
         ) : (
-          <video
-            src={previewUrl}
-            controls
-            className="w-full max-w-[320px] h-[180px] object-contain bg-black mx-auto rounded-lg"
-          />
-        ))}
+          <>
+            <MediaUploader
+              file={selectedFile}
+              previewUrl={previewUrl}
+              onSelect={handleMediaSelect}
+            />
 
-      <input
-        ref={fileInputRef}
-        type="file"
-        accept="image/*,video/*"
-        onChange={handleInputChange}
-        className="hidden"
-      />
+            {mode === "admin" && flow === "addStory" && (
+              <select
+                value={selectedAlbum}
+                onChange={(e) => setSelectedAlbum(e.target.value)}
+                className="w-full px-3 py-2 text-sm border rounded-lg"
+              >
+                <option value="">Select Album</option>
+                {adminAlbums.map((album) => (
+                  <option key={album.id} value={album.id.toString()}>
+                    {album.albumName}
+                  </option>
+                ))}
+              </select>
+            )}
+
+            {mode === "user" && flow === "addStoryToAlbum" && (
+              <select
+                value={selectedAlbum}
+                onChange={(e) => setSelectedAlbum(e.target.value)}
+                className="w-full px-3 py-2 text-sm border rounded-lg"
+              >
+                <option value="">Select Album</option>
+                <option value="1">Album 1</option>
+              </select>
+            )}
+
+            {mode === "user" && flow === "addStory" && (
+              <input
+                type="text"
+                placeholder="Album Name"
+                value={selectedAlbum}
+                onChange={(e) => setSelectedAlbum(e.target.value)}
+                className="w-full px-3 py-2 text-sm border rounded-lg"
+              />
+            )}
+
+            <input
+              type="text"
+              placeholder="Caption Story !"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              className="w-full px-3 py-2 text-sm border rounded-lg"
+            />
+
+            {mode === "admin" && flow === "addStoryToAlbum" && (
+              <input
+                type="text"
+                placeholder="Album Name"
+                value={adminTimer}
+                onChange={(e) => setAdminTimer(e.target.value)}
+                className="w-full px-3 py-2 text-sm border rounded-lg"
+              />
+            )}
+
+            <div className="flex justify-end gap-3 pt-2">
+              <button onClick={handleClose} className="px-4 py-2 text-sm bg-gray-200 rounded-lg">
+                Cancel
+              </button>
+              <button
+                onClick={handlePublish}
+                disabled={loading}
+                className="px-5 py-2 text-sm bg-blue-600 text-white rounded-lg disabled:opacity-50"
+              >
+                {loading ? "Publishing..." : "Publish"}
+              </button>
+            </div>
+          </>
+        )}
+      </div>
     </div>
-
-    {mode === "admin" && flow === "addStory" && (
-      <>
-        <select
-          value={selectedAlbum}
-          onChange={(e) => setSelectedAlbum(e.target.value)}
-          className="w-full px-3 py-2 text-sm border rounded-lg"
-        >
-          <option value="">Select Album</option>
-          <option value="1">Album 1</option>
-        </select>
-
-        <input
-          type="number"
-          placeholder="Timer (seconds)"
-          value={timer}
-          min={1}
-          onChange={(e) =>
-            setTimer(e.target.value === "" ? "" : Number(e.target.value))
-          }
-          className="w-full px-3 py-2 text-sm border rounded-lg"
-        />
-      </>
-    )}
-
-    {mode === "user" && flow === "addStoryToAlbum" && (
-      <>
-        <select
-          value={selectedAlbum}
-          onChange={(e) => setSelectedAlbum(e.target.value)}
-          className="w-full px-3 py-2 text-sm border rounded-lg"
-        >
-          <option value="">Select Album</option>
-          <option value="1">Album 1</option>
-        </select>
-      </>
-    )}
-
-    {mode === "user" && flow === "addStory" && (
-      <>
-        <input
-          type="text"
-          placeholder="Album Name"
-          value={selectedAlbum}
-          onChange={(e) => setSelectedAlbum(e.target.value)}
-          className="w-full px-3 py-2 text-sm border rounded-lg"
-        />
-
-   
-      
-      </>
-    )}
-
-    {mode === "user" && flow === "addStoryOnly" && null}
-
-    <input
-      type="text"
-      placeholder="Caption Story !"
-      value={description}
-      onChange={(e) => setDescription(e.target.value)}
-      className="w-full px-3 py-2 text-sm border rounded-lg"
-    />
-    {mode === "admin" && (
-
-
-
-
-  <input
-    type="text"
-    placeholder="Alpom Name"
-    value={adminTimer}
-    onChange={(e) =>
-      setAdminTimer(e.target.value === "" ? "" : Number(e.target.value))
-    }
-    className="w-full px-3 py-2 text-sm border rounded-lg"
-  />
-
-
-
-
-)}
-
-
-    <div className="flex justify-end gap-3 pt-2">
-      <button
-        onClick={handleClose}
-        className="px-4 py-2 text-sm bg-gray-200 rounded-lg"
-      >
-        Cancel
-      </button>
-
-      <button
-        onClick={handlePublish}
-        disabled={!selectedFile || loading}
-        className="px-5 py-2 text-sm bg-blue-600 text-white rounded-lg disabled:opacity-50"
-      >
-        {loading ? "Publishing..." : "Publish"}
-      </button>
-    </div>
-  </>
-)}
-
-
-  </div>
-</div>
-
   );
 };
 

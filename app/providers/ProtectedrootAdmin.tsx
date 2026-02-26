@@ -1,26 +1,30 @@
 "use client";
 
-import { useContext, useEffect } from "react";
+import { useContext, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import AuthContext from "./AuthContext";
-import { toast } from "sonner";
 
-// admin-protect
-export default function ProtectedRootAdmin({ children }: { children: React.ReactNode }) {
-  const { role } = useContext(AuthContext)!;
+export default function ProtectedRootAdmin({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  const { role, isAuthLoading } = useContext(AuthContext)!;
   const router = useRouter();
+  const [allowed, setAllowed] = useState(false);
 
-  // check-admin
   useEffect(() => {
+    if (isAuthLoading) return;
+
     if (role !== "admin") {
-      toast("Not Authorized");
-      router.replace("/providers/UnAuthorized"); // go-unauth
+      router.replace("/providers/UnAuthorized");
+      return;
     }
-  }, [role, router]);
 
-  // no-access
-  if (role !== "admin") return null;
+    setAllowed(true);
+  }, [role, isAuthLoading, router]);
 
-  // allowed
+  if (isAuthLoading || !allowed) return null;
+
   return <>{children}</>;
 }

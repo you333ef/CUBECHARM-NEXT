@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useContext } from "react";
 import AuthContext from "@/app/providers/AuthContext";
 import { toast } from "sonner";
+import api from "../refresh";
 
 const ChangePass = () => {
   const { baseUrl } = useContext(AuthContext)!;
@@ -25,39 +26,33 @@ const ChangePass = () => {
   const newPassword = watch("newPassword");
   const router = useRouter();
 
-  const onSubmit = async (data: any) => {
-    try {
-      const res = await fetch(`${baseUrl}/Auth/change-password`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${accessToken}`,
-        },
-        body: JSON.stringify({
-          userId: user.id,
-          currentPassword: data.currentPassword,
-          newPassword: data.newPassword,
-        }),
-      });
+ const onSubmit = async (data: any) => {
+  try {
+    const res = await api.post(`/Auth/change-password`, {
+      userId: user.id,
+      currentPassword: data.currentPassword,
+      newPassword: data.newPassword,
+    });
 
-      const text = await res.text();
-      const result = text ? JSON.parse(text) : null;
+    const result = res.data;
 
-      if (res.ok && result?.success) {
-        toast.success("Password changed successfully");
-        router.push("/AuthLayout/Login");
+    if (result?.success) {
+      toast.success("Password changed successfully");
+      router.push("/AuthLayout/Login");
+    } else {
+      if (Array.isArray(result?.errors)) {
+        result.errors.forEach((err: string) => toast.error(err));
       } else {
-        if (Array.isArray(result?.errors)) {
-          result.errors.forEach((err: string) => toast.error(err));
-        } else {
-          toast.error(result?.message || "Change password failed");
-        }
+        toast.error(result?.message || "Change password failed");
       }
-    } catch (error) {
-      toast.error("Network error, please try again");
-      console.error(error);
     }
-  };
+  } catch (error: any) {
+    toast.error(
+      error.response?.data?.message || "Network error, please try again"
+    );
+    console.error(error);
+  }
+};
 
   return (
     <div className="flex justify-center items-center h-screen bg-[#FFFFFF] p-3">

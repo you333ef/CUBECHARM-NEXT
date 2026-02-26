@@ -2,23 +2,26 @@
 
 import React, { useContext, useEffect, useState } from "react";
 import PropertyCard from "../componants/shared/PropertyCard";
-import CategoryBar from "../CategoryBar";
-import StoriesProfilee from "../profilee/componants/StoriesProfilee";
+import CategoryBar from "../categories/CategoryBar";
+
 import LayoutWrapper from "../componants/LayoutWrapper";
-import StoryViewer from "../profilee/componants/StoryViewer";
 import AuthContext from "@/app/providers/AuthContext";
 import axios from "axios";
+import dynamic from "next/dynamic";
+import api from "@/app/AuthLayout/refresh";
+const StoryViewer = dynamic(() => import("../../../app/features/stories/engine/StoryViewer"), { ssr: false });
+const StoriesProfilee = dynamic(() => import("../../../app/features/stories/engine/StoriesProfilee"), { ssr: false });
 
 const PropertyList = () => {
-  const { baseUrl } = useContext(AuthContext)!;
+  const { baseUrl, syncFavoriteIds } = useContext(AuthContext)!;
   const [properties, setProperties] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   const fetchProperties = async () => {
     try {
-      const response = await axios.get(
-        `${baseUrl}/Property/feed?page=1&pageSize=24&sort=recent`
-      );
+    const response = await api.get(
+  `/Property/feed?page=1&pageSize=24&sort=recent`
+);
 
       if (response.status === 200) {
         const items = response.data.data.items.map((item: any) => {
@@ -35,6 +38,14 @@ const PropertyList = () => {
         });
 
         setProperties(items);
+
+        // Sync favorite IDs from API response to global context
+        const favIds = items
+          .filter((item: any) => item.isFavourite || item.isFavorite)
+          .map((item: any) => Number(item.propertyId));
+        if (favIds.length > 0) {
+          syncFavoriteIds(favIds);
+        }
       }
     } catch (error) {
       console.error("Error fetching property feed:", error);
@@ -42,17 +53,28 @@ const PropertyList = () => {
       setLoading(false);
     }
   };
+    const [albums, setAlbums] = useState<any[]>([]);
 
+  const fetchAdminAlbums = async () => {
+    try {
+      const response = await api.get(`/admin/admin-albums`);
+      if (response.data?.success && Array.isArray(response.data.data)) {
+        setAlbums(response.data.data);
+      }
+    } catch (error) {
+      console.error(error);
+    }
+  };
   useEffect(() => {
     fetchProperties();
+     fetchAdminAlbums();
   }, []);
-
   return (
     <LayoutWrapper>
       <div className="w-full py-5 px-3 md:px-6">
         <CategoryBar />
         <div className="mb-6">
-          {/* <StoriesProfilee /> */}
+          <StoriesProfilee albums={albums} viewerMode="viewer" />
           <StoryViewer />
         </div>
         <h2 className="text-2xl ml-3 font-semibold mb-6 text-gray-700">
@@ -107,6 +129,7 @@ const PropertyList = () => {
                   ownerProfileImage={property.ownerProfileImage}
                   ownerRating={property.ownerRating}
                   ownerUserId={property.ownerUserId}
+                  isFavorite={property.isFavourite ?? property.isFavorite}
                   fetchProperties={fetchProperties}
                   
                 />

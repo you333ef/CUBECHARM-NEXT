@@ -6,7 +6,7 @@ import Image from "next/image";
 import axios from "axios";
 import { toast } from "sonner";
 import AuthContext from "@/app/providers/AuthContext";
-// import ReportModal from "../../../app/userportal/componants/shared/ReportModal";
+import api from "@/app/AuthLayout/refresh";
 
 interface FavouriteProperty {
   propertyId: number;
@@ -41,24 +41,23 @@ interface FavouriteProperty {
 export default function MyFavorites() {
   const [favorites, setFavorites] = useState<FavouriteProperty[]>([]);
   const [loading, setLoading] = useState(true);
-  const { baseUrl } = useContext(AuthContext)!;
+  const {  syncFavoriteIds } = useContext(AuthContext)!;
 
 
   useEffect(() => {
     const fetchFavorites = async () => {
       try {
-        const token = localStorage.getItem("accessToken");
 
-        const res = await axios.get(
-          `${baseUrl}/favourite/property`,
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-          }
+        const res = await api.get(
+          `/favourite/property`,
+         
         );
 
-        setFavorites(res.data?.data?.items || []);
+        const items = res.data?.data?.items || [];
+        setFavorites(items);
+        //  all fetched favorite ID 
+        const ids = items.map((item: FavouriteProperty) => item.propertyId);
+        syncFavoriteIds(ids);
       } catch (error) {
         toast.error("Failed to load favorites");
       } finally {
@@ -67,44 +66,10 @@ export default function MyFavorites() {
     };
 
     fetchFavorites();
-  }, [baseUrl]);
+  }, []);
 
- const handleRemoveFavorite = async (propertyId: number) => {
-  try {
-    const token = localStorage.getItem("accessToken");
-
-    if (!token) {
-      toast.error("No token found");
-      return;
-    }
-
-    // Ensure baseUrl is valid
-    if (!baseUrl) {
-      toast.error("Base URL is missing");
-      return;
-    }
-
-    console.log(`Making DELETE request to: ${baseUrl}/favourite/property/${propertyId}`);
-
-    const res = await axios.delete(
-      `${baseUrl}/favourite/property/${propertyId}`,
-      {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      }
-    );
-
-    if (res.data?.success) {
-      setFavorites((prev) => prev.filter((item) => item.propertyId !== propertyId));
-      toast.success("Removed from favorites");
-    } else {
-      toast.error("Failed to remove favorite: API response not successful");
-    }
-  } catch (error) {
-    console.error("Error during removing favorite:", error);
-    toast.error("Failed to remove favorite");
-  }
+const handleRemoveFavorite = (propertyId: number) => {
+  setFavorites((prev) => prev.filter((item) => item.propertyId !== propertyId));
 };
 
 

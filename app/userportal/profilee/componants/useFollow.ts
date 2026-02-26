@@ -2,6 +2,7 @@ import { useState, useContext } from "react";
 import axios from "axios";
 import { toast } from "sonner";
 import AuthContext from "@/app/providers/AuthContext";
+import api from "@/app/AuthLayout/refresh";
 
 export const useFollow = () => {
   const { baseUrl } = useContext(AuthContext)!;
@@ -16,14 +17,10 @@ export const useFollow = () => {
 
   const checkIsFollowing = async (targetUserId: string) => {
     try {
-      const res = await axios.get(
-        `${baseUrl}/users/follows/${targetUserId}/is-following`,
-        {
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
-          },
-        }
+      const res = await api.get(
+        `/users/follows/${targetUserId}/is-following`
       );
+      
       setrerefresh_data
      return res.data?.data as boolean;
 
@@ -36,15 +33,9 @@ export const useFollow = () => {
   const followUser = async (targetUserId: string) => {
     setFollowLoading(true);
     try {
-      await axios.post(
-        `${baseUrl}/users/follows/${targetUserId}`,
-        {},
-        {
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
-          },
-        }
-      );
+      await api.post(`/users/follows/${targetUserId}`, null);
+
+     
       toast.success("Followed successfully");
       setrerefresh_data(true);
 
@@ -58,14 +49,7 @@ export const useFollow = () => {
   const unfollowUser = async (targetUserId: string) => {
     setFollowLoading(true);
     try {
-      await axios.delete(
-        `${baseUrl}/users/follows/${targetUserId}`,
-        {
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
-          },
-        }
-      );
+      await api.delete(`/users/follows/${targetUserId}`);
       setrerefresh_data(false);
       toast.success("Unfollowed successfully");
     } catch {

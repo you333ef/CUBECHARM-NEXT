@@ -69,19 +69,43 @@ const PostCard = memo(
         </div>
 
         {/* Image */}
-        <button onClick={() => onOpenPost(post.id)} className="w-full block">
-          <div className="relative w-full aspect-square bg-black/5 overflow-hidden rounded-lg">
-            <Image
-              src={post.postImage}
-              alt={post.caption ? post.caption.slice(0, 50) : "Post image"}
-              width={500}
-              height={500}
-              className="object-cover w-full h-full"
-              priority={isFirst}
-              unoptimized
-            />
+    <button onClick={() => onOpenPost(post.id)} className="w-full block">
+  <div className="relative w-full aspect-square bg-black/5 overflow-hidden rounded-lg">
+    {post.hasVideo ? (
+      <>
+        <video
+          src={post.videoUrl}
+          className="w-full h-full object-cover"
+          muted
+          playsInline
+          preload="metadata"
+        />
+        {/* Play icon overlay */}
+        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+          <div className="w-14 h-14 bg-black/50 rounded-full flex items-center justify-center">
+            <svg
+              className="w-7 h-7 text-white ml-1"
+              fill="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path d="M8 5v14l11-7z" />
+            </svg>
           </div>
-        </button>
+        </div>
+      </>
+    ) : (
+      <Image
+        src={post.postImage}
+        alt={post.caption ? post.caption.slice(0, 50) : "Post image"}
+        width={500}
+        height={500}
+        className="object-cover w-full h-full"
+        priority={isFirst}
+        unoptimized
+      />
+    )}
+  </div>
+</button>
 
         {/* Body */}
         <div className="p-4">

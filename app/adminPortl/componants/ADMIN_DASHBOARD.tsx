@@ -1,4 +1,5 @@
 "use client"
+import api from "@/app/AuthLayout/refresh";
 import AuthContext from "@/app/providers/AuthContext";
 import axios from "axios";
 import { useContext, useEffect, useState } from "react";
@@ -16,16 +17,8 @@ import {
 } from "recharts";
 const ADMIN_DASHBOARD = () => {
 // 1
-  const topCountries = [
-    { name: "Egypt", value: 70 },
-    { name: "Qatar", value: 20 },
-    { name: "Turkey", value: 10 },
-  ];
-  const propertyCategories = [
-    { name: "Villas", value: 50 },
-    { name: "Houses", value: 20 },
-    { name: "Palaces", value: 30 },
-  ];
+  const [topCountries, setTopCountries] = useState([]);
+  const [propertyCategories, setPropertyCategories] = useState([]);
   const COLORS = ["#3b82f6", "#64748b", "#475569", "#1e293b", "#0f172a"];
 // 2
   const [totalProperties, setTotalProperties] = useState<number | null>(null);
@@ -43,20 +36,14 @@ const [totalVisitors, setTotalVisitors] = useState<number | null>(null);
 // 
 
   const auth = useContext(AuthContext)!;
-  const { baseUrl } = auth;
- const accessToken =
-    typeof window !== "undefined" ? localStorage.getItem("accessToken") : null;
-  
+
+ 
 
 async function getTotalProperties() {
   try {
-    const response = await axios.get(
-      baseUrl + "/admin/dashboard/total-properties",
-      {
-        headers: {
-          Authorization: "Bearer " + accessToken,
-        },
-      }
+    const response = await api.get(
+      "/admin/dashboard/total-properties",
+      
     );
 
     return response.data.data.totalProperties;
@@ -68,13 +55,8 @@ async function getTotalProperties() {
 
 async function getMonthlyProperties() {
   try {
-    const response = await axios.get(
-      baseUrl + "/admin/dashboard/monthly-properties",
-      {
-        headers: {
-          Authorization: "Bearer " + accessToken,
-        },
-      }
+    const response = await api.get(
+      "/admin/dashboard/monthly-properties"
     );
 
     const data = response.data.data;
@@ -89,47 +71,72 @@ async function getMonthlyProperties() {
     return null;
   }
 }
+
 async function getVisitors() {
   try {
-    const response = await axios.get(
-      baseUrl + "/admin/dashboard/overview",
-      {
-        headers: {
-          Authorization: "Bearer " + accessToken,
-        },
-      }
-    );
+    const response = await api.get("/admin/dashboard/overview");
 
-    const visitorsTotal = response.data.data.visitors?.total;
+    const visitorsTotal = response?.data?.data?.visitors?.total;
+
     return visitorsTotal ?? null;
-  } catch (error) {
-    console.log("Visitors API error:", error);
+  } catch (error: any) {
+    if (error.response) {
+      console.log("Visitors API error:", error.response.data);
+    } else {
+      console.log("Visitors Network error:", error.message);
+    }
+
     return null;
   }
 }
 
 useEffect(() => {
-   if (!baseUrl) return;
+  
   async function loadDashboardData() {
-    // 1️-Total Properties
-    const total = await getTotalProperties();
-    setTotalProperties(total);
+    try {
+  
+      const total = await getTotalProperties();
+      setTotalProperties(total);
 
-    // 2️- Monthly Properties + Growth + Month
-    const monthlyResult = await getMonthlyProperties();
+      
+      const monthlyResult = await getMonthlyProperties();
+      if (monthlyResult) {
+        setMonthlyProperties(monthlyResult.propertiesCount);
+        setMonthlyGrowth(monthlyResult.percentageChange);
+        setCurrentMonth(monthlyResult.month);
+      }
 
-    if (monthlyResult) {
-      setMonthlyProperties(monthlyResult.propertiesCount);
-      setMonthlyGrowth(monthlyResult.percentageChange);
-      setCurrentMonth(monthlyResult.month);
+     
+      const visitors = await getVisitors();
+      setTotalVisitors(visitors);
+
+     
+      const response = await api.get("/admin/dashboard/overview");
+      const overview = response.data.data;
+      // Categories Pie Chart
+      if (overview.categories && Array.isArray(overview.categories)) {
+        setPropertyCategories(
+          overview.categories.map((cat: any) => ({
+            name: cat.categoryName,
+            value: cat.count,
+          }))
+        );
+      }
+      // Top Countries Bar Chart
+      if (overview.topCountries && Array.isArray(overview.topCountries)) {
+        setTopCountries(
+          overview.topCountries.map((c: any) => ({
+            name: c.country,
+            value: c.propertiesCount,
+          }))
+        );
+      }
+    } catch (error) {
+      console.error("Dashboard API error:", error);
     }
-        const visitors = await getVisitors();
-    setTotalVisitors(visitors);
-
   }
-
   loadDashboardData();
-}, [baseUrl]);
+}, []);
 
 
 

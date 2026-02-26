@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import { usePathname } from "next/navigation";
 import Link from "next/link";
 import {
   FaHome,
@@ -9,8 +10,11 @@ import {
   FaTimesCircle,
   FaFlag,
 } from "react-icons/fa";
+import { MdOutlineReportProblem } from "react-icons/md";
 
-import { MdDashboard, MdAutoStories, MdSettings } from "react-icons/md";
+
+import { MdDashboard, MdAutoStories } from "react-icons/md";
+import { FiLogOut } from "react-icons/fi";
 import ADMIN_Nav from "./componants/ADMIN_Nav";
 import ADMIN_SIDEBAR, { MenuItem } from "./componants/ADMIN_SIDEPAR";
 import ProtectedRootAdmin from "../providers/ProtectedrootAdmin";
@@ -22,25 +26,25 @@ interface AdminLayoutProps {
 const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
   
   const [open, setOpen] = useState(false);
-// 2
   const [menuItems, setMenu] = useState<MenuItem[]>([
-    { name: "Dashboard", icon: <FaHome />, path: "/adminPortl", active: true },
-    { name: "Clients", icon: <FaUsers />, path: "/adminPortl/clients_info" },
-    { name: "CateOverview", icon: <MdDashboard />, path: "/adminPortl/cateoverview" },
-     { name: "CateManegment", icon: <MdDashboard />, path: "/adminPortl/CategoriesManegment" },
-       { name: "Stories Manegment", icon: <MdAutoStories  />, path: "/adminPortl/StoriesManeg" },
-    // {
-    //   name: "Posts",
-    //   icon: <MdOutlinePendingActions />,
-    //   subItems: [
-    //     { name: "Pending", icon: <MdOutlinePendingActions />, path: "/adminPortl/pending" },
-    //     { name: "Approved", icon: <FaCheckCircle />, path: "/adminPortl/approved" },
-    //     { name: "Rejected", icon: <FaTimesCircle />, path: "/adminPortl/rejected" },
-    //   ],
-    // },
-    { name: "Reports", icon: <FaFlag />, path: "/adminPortl/reports" },
-    { name: "Settings", icon: <MdSettings />, path: "/adminPortl/settings" },
+    { name: "Dashboard", icon: <FaHome />, path: "/adminPortl", active: false },
+       { name: "Management Story", icon: <FaHome />, path: "/adminPortl/StoriesManeg", active: false },
+    { name: "Clients", icon: <FaUsers />, path: "/adminPortl/clients_info", active: false },
+    { name: "Reports Properties", icon: <FaFlag />, path: "/adminPortl/reports", active: false },
+    { name: "Reports Posts", icon: < MdOutlineReportProblem/>, path: "/adminPortl/reportsPosts", active: false },
+    { name: "Logout", icon: <FiLogOut />, active: false },
   ]);
+
+  const pathname = usePathname();
+
+  useEffect(() => {
+    setMenu((prev) =>
+      prev.map((item) => ({
+        ...item,
+        active: item.path === pathname
+      }))
+    );
+  }, [pathname]);
   return (
     <div className="flex flex-col min-h-screen">
       {/* 3 */}
@@ -56,7 +60,10 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
         />
         {/* 6 */}
         <main className="flex-1 p-6 bg-gray-50 overflow-y-auto">
-            <ProtectedRootAdmin> {children}</ProtectedRootAdmin>
+           {/* // <ProtectedRootAdmin> */}
+              
+               {children}
+               {/* //</ProtectedRootAdmin> */}
          
         </main>
       </div>

@@ -1,11 +1,14 @@
 "use client";
 import { useForm } from "react-hook-form";
-import { FaGoogle, FaFacebookF } from "react-icons/fa"; // NEW
+import { FaGoogle } from "react-icons/fa"; 
 import { useRouter } from "next/navigation";
-import axios from "axios";
+import { setToken } from "../tokenMemory";
+
 import { useContext, useEffect } from "react";
 import AuthContext from "@/app/providers/AuthContext";
 import { toast } from "sonner";
+import api from "../refresh";
+import axios, { AxiosError } from "axios";
 
 // 1
 type FormData = {
@@ -13,7 +16,6 @@ type FormData = {
   password: string;
   terms: boolean;
 };
-
 export default function LoginPage() {
   const router = useRouter();
   const {
@@ -23,59 +25,45 @@ export default function LoginPage() {
     watch,
   } = useForm<FormData>();
   const password = watch("password");
-
   //  2
-  const { baseUrl } = useContext(AuthContext)!;
-
+  const {  login } = useContext(AuthContext)!;
   // 3
   const goToForget = () => router.push("/AuthLayout/forget");
 
-  const onSubmit = async (data: FormData) => {
-    try {
-      const response = await axios.post(
-        baseUrl + "/Auth/login",
-        {
-          emailOrUsername: data.email,
-          password: data.password,
-        },
-        {
-          headers: {
-            "Content-Type": "application/json",
-          },
-        }
-      );
-     
+const onSubmit = async (data: FormData) => {
+  try {
+    const response = await api.post(
+      "/Auth/login",
+      {
+        emailOrUsername: data.email,
+        password: data.password,
+      },
+    );
 
-      console.log("Login success:", response.data);
-      localStorage.setItem("accessToken", response.data.accessToken);
-     
-      toast.success("Logged in successfully!");
-      router.push("/");
+  const accessToken = response.data.accessToken;
+    if (accessToken) {
+        setToken(accessToken)
+ login(accessToken);
+   toast.success("Logged in successfully!");
+    router.push("/");
+     }
+   
+  
+
+  } catch (error: unknown) {
+    if (axios.isAxiosError(error)) {
+      const data = error.response?.data as any;
+      const msg = data?.errors?.[0] || data?.message || error.message || "Login failed!";
+      toast.error(msg);
+    } else if (error instanceof Error) {
+      toast.error(error.message);
+    } else {
+      console.error("Unknown error:", error);
+      toast.error("Login failed!");
     }
-  catch (error: unknown) {
-  if (axios.isAxiosError(error)) {
-    console.error("Axios full error:", error.toJSON());
-
-    const data = error.response?.data as any;
-    const msg = data?.errors?.[0] || data?.message || error.message || "Login failed!";
-    console.log("Login response:", msg);
-
-    toast.error(msg);
-  } else if (error instanceof Error) {
-    console.error("Error:", error.message);
-    toast.error(error.message);
-  } else {
-    console.error("Unknown error:", error);
-    toast.error("Login failed!");
   }
-}
-
-  };
-
-  // =========================
-  // Google Login Popup
-  // =========================
-  // NEW: Opens Google popup and expects accessToken returned from Google OAuth
+};
+  //Opens Google popup and expects accessToken 
   const handleGoogleLogin = () => {
     const googleAuthUrl =
       "https://accounts.google.com/o/oauth2/v2/auth" +
@@ -90,26 +78,20 @@ export default function LoginPage() {
       "width=500,height=600"
     );
   };
-  //  Listen for messages from the popup
   useEffect(() => {
   const handler = (event: MessageEvent) => {
     if (event.origin !== window.location.origin) return;
-
     if (event.data?.type === "GOOGLE_LOGIN_FAILED") {
       toast.error("Google login failed. Please try again.");
     }
-
     if (event.data?.type === "GOOGLE_LOGIN_SUCCESS") {
       toast.success("Logged in with Google successfully ");
       router.replace("/");
     }
   };
-
   window.addEventListener("message", handler);
   return () => window.removeEventListener("message", handler);
 }, []);
-
- 
   return (
     <div className="flex justify-center items-center h-screen bg-[#FFFFFF] p-3">
       <div className="w-full max-w-md bg-white shadow-xl rounded-2xl px-6 py-6">
@@ -127,7 +109,7 @@ export default function LoginPage() {
 
         {/*6*/}
         <button
-          onClick={handleGoogleLogin} // NEW
+          onClick={handleGoogleLogin} 
           className="w-full flex items-center justify-center border border-[#E5E7EB] rounded-lg py-3 text-sm font-medium text-[#111827] hover:bg-gray-50 transition mb-3"
         >
           <FaGoogle className="w-5 h-5 mr-2" />

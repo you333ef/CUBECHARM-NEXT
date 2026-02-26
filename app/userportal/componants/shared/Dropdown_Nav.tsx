@@ -22,6 +22,8 @@ import {
 } from 'react-icons/io5';
 import axios from 'axios';
 import AuthContext from '@/app/providers/AuthContext';
+import api from '@/app/AuthLayout/refresh';
+import { getToken } from '@/app/AuthLayout/tokenMemory';
 
 interface MenuItem {
   label: string;
@@ -51,32 +53,25 @@ const Dropdown = () => {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  const { baseUrl } = useContext(AuthContext)!;
+  const { logout } = useContext(AuthContext)!;
 
   const closeDropdown = () => setIsOpen(false);
 const handleAuthAction = async (router: any) => {
   try {
-    //revoke refresh token 
-    await axios.post(
-      `${baseUrl}/api/Auth/revoke-token`,
+    await api.post(
+      `/Auth/revoke-token`,
       {},
       { withCredentials: true }
     );
   } catch (error) {
     console.warn("Revoke token failed", error);
   } finally {
-    if (typeof window !== "undefined") {
-      localStorage.removeItem("accessToken");
-    }
-
+    logout();
     router.push("/AuthLayout/Login");
   }
 };
 
-const hasToken =
-  typeof window !== "undefined" &&
-  !!localStorage.getItem("accessToken");
-
+const hasToken =getToken() !== null;
   // Profile Settings links
   const profileSettings: MenuItem[] = [
     { label: 'Profile Info', href: '/userportal/Settings/profilesettings/profile_info', icon: <IoPersonOutline size={16} /> },
@@ -89,7 +84,7 @@ const hasToken =
   },
   ];
 
-  // CubeCharm Info links
+  // CubeCharm Info 
   const cubeCharmLinks: MenuItem[] = [
     { label: 'About', href: '/userportal/Settings/cube_info/about', icon: <IoInformationCircleOutline size={16} /> },
     { label: 'Privacy Policy', href: '/userportal/Settings/cube_info/Privacy', icon: <IoShieldCheckmarkOutline size={16} /> },

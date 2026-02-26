@@ -1,38 +1,48 @@
 import axios from "axios";
 import { toast } from "sonner";
-import IMAGE from "../../../public/images/a9054bca-63af-4ee6-a443-e15e322569c3.png";
+import api from "@/app/AuthLayout/refresh";
 
 const BaseUrl = "http://localhost:5000";
 
 /**
  * Get activity feed with
  */
-export const getActivityFeed = async (baseUrl: string) => {
+export const getActivityFeed = async () => {
   try {
-    const response = await axios.get(`${baseUrl}/posts?page=1&pageSize=20`, {
-      headers: {
-        Authorization: "Bearer " + localStorage.getItem("accessToken"),
-      },
-    });
+    const response = await api.get(`/posts?page=1&pageSize=20`);
+     
 
     const mappedPosts = response.data.data.items.map((item: any) => {
-        console.log("POST FROM API:", item);
+      const videos =
+        item.mediaFiles?.filter((m: any) => m.type === "Video") || [];
+
+      const images =
+        item.mediaFiles?.filter((m: any) => m.type === "Image") || [];
+
       return {
         id: item.postId,
         ownerUserId: item.userId,
         username: item.username,
-        userImage: item.userAvatar || IMAGE,
-        postImage: item.mediaUrl
-          ? `${BaseUrl}/${item.mediaUrl}`
-          : "/images/default-post.png",
-        
+        userImage: item.userAvatar
+          ? `${BaseUrl}/${item.userAvatar}`
+          : "/images/person.jpg",
+
+        postImage:
+          images.length > 0
+            ? `${BaseUrl}/${images[0].url}`
+            : "/images/default-post.png",
+
+        videoUrl:
+          videos.length > 0 ? `${BaseUrl}/${videos[0].url}` : null,
+
+        hasVideo: videos.length > 0,
+
         caption: item.content ?? "",
         likes: item.likesCount ?? 0,
-         isLiked: item.isLiked ?? false, 
+        isLiked: item.isLiked ?? false,
         timestamp: item.createdDate || "Just now",
       };
     });
-
 
     return mappedPosts;
   } catch (error) {
@@ -43,30 +53,40 @@ export const getActivityFeed = async (baseUrl: string) => {
 
 /**
  * Get post details by ID
-
  */
 export const getPostDetails = async (
   postId: number,
   baseUrl: string
 ): Promise<any | null> => {
   try {
-    const response = await axios.get(`${baseUrl}/posts/${postId}`, {
-      headers: {
-        Authorization: "Bearer " + localStorage.getItem("accessToken"),
-      },
-    });
+    const response = await api.get(`/posts/${postId}`);
 
     const data = response.data.data;
+
+    const videos =
+      data.mediaFiles?.filter((m: any) => m.type === "Video") || [];
+
+    const images =
+      data.mediaFiles?.filter((m: any) => m.type === "Image") || [];
 
     const mappedPostDetails = {
       id: data.postId,
       username: data.username,
-      postImage: data.mediaUrl
-        ? `${BaseUrl}/${data.mediaUrl}`
-        : "https://via.placeholder.com/600",
+ ownerUserId: data.userId, 
+      postImage:
+        images.length > 0
+          ? `${BaseUrl}/${images[0].url}`
+          : "/images/default-post.png",
+
+      videoUrl:
+        videos.length > 0 ? `${BaseUrl}/${videos[0].url}` : null,
+
+      hasVideo: videos.length > 0,
+
       userImage: data.userAvatar
         ? `${BaseUrl}/${data.userAvatar}`
-        : "https://via.placeholder.com/150",
+        : "/images/person.jpg",
+
       caption: data.content ?? "",
       likes: data.likesCount ?? 0,
       comments: data.comments ?? [],
@@ -83,28 +103,12 @@ export const getPostDetails = async (
 
 /**
  * Create a new post with optional media
- 
  */
-export const createPost = async (
-  payload: {
-    content: string;
-    media?: File;
-  },
-  baseUrl: string
-) => {
+// API call
+export const createPost = async (formData: FormData, baseUrl: string) => {
   try {
-    const formData = new FormData();
-
-    formData.append("Description", payload.content ?? "");
-
-    if (payload.media) {
-      formData.append("media", payload.media);
-    }
-
-    const response = await axios.post(`${baseUrl}/posts`, formData, {
-      headers: {
-        Authorization: "Bearer " + localStorage.getItem("accessToken"),
-      },
+    const response = await api.post(`/posts`, formData, {
+     
     });
 
     toast.success(response.data.message);
@@ -115,24 +119,18 @@ export const createPost = async (
   }
 };
 
-
 /**
  * Toggle like on a post
-
  */
 export const toggleLike = async (
   postId: string,
   baseUrl: string
 ): Promise<{ likes: number; isLiked: boolean } | null> => {
   try {
-    const response = await axios.post(
-      `${baseUrl}/posts/${postId}/like`,
+    const response = await api.post(
+      `/posts/${postId}/like`,
       {},
-      {
-        headers: {
-          Authorization: "Bearer " + localStorage.getItem("accessToken"),
-        },
-      }
+     
     );
 
     return response.data.data;
@@ -147,11 +145,8 @@ export const toggleLike = async (
  */
 export const deletePost = async (postId: number, baseUrl: string) => {
   try {
-    const response = await axios.delete(`${baseUrl}/posts/${postId}`, {
-      headers: {
-        Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
-      },
-    });
+    const response = await api.delete(`/posts/${postId}`);
+     
 
     toast.success(response.data.message || "Post deleted");
     return true;
@@ -173,10 +168,10 @@ export const reportPost = async (
   baseUrl: string
 ) => {
   try {
-    const res = await axios.post(
-      `${baseUrl}/report/post/${reportId}`,
+    const res = await api.post(
+      `/report/post/${reportId}`,
       { reason: data.reason, description: data.description },
-      { headers: { Authorization: `Bearer ${localStorage.getItem("accessToken")}` } }
+      
     );
 
     if (res.data?.success) {
@@ -199,14 +194,13 @@ export const reportPost = async (
 
 /**
  * Block a user by ID
- 
  */
 export const blockUser = async (userId: string | number, baseUrl: string) => {
   try {
-    const res = await axios.post(
-      `${baseUrl}/users/blocks/${userId}`,
+    const res = await api.post(
+      `/users/blocks/${userId}`,
       {},
-      { headers: { Authorization: `Bearer ${localStorage.getItem("accessToken")}` } }
+     
     );
 
     if (res.data?.success) {
@@ -225,18 +219,17 @@ export const blockUser = async (userId: string | number, baseUrl: string) => {
 /**
  * Fetch properties feed for ads tab
  */
-export const fetchPropertiesFeed = async (baseUrl: string) => {
+export const fetchPropertiesFeed = async () => {
   try {
-    const response = await axios.get(
-      `${baseUrl}/Property/feed?page=1&pageSize=24&sort=recent`
-    );
+    const response = await api.get(`/Property/feed?page=1&pageSize=24&sort=recent`);
 
     if (response.status === 200) {
       const items = response.data.data.items.map((item: any) => {
         const formatUrl = (url: string | null) => {
           if (!url) return null;
           if (url.startsWith("http")) return url;
-          return `${baseUrl}/${url}`;
+      
+          return `${BaseUrl}/${url}`;
         };
 
         return {
@@ -247,6 +240,7 @@ export const fetchPropertiesFeed = async (baseUrl: string) => {
 
       return items;
     }
+
     return [];
   } catch (err) {
     console.error("Error fetching properties feed", err);

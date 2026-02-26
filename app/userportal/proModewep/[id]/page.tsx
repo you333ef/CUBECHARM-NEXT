@@ -16,6 +16,7 @@ import AuthContext from "@/app/providers/AuthContext";
 import ConfirmDeleteModal from '../../../adminPortl/sharedAdmin/DELETE_CONFIRM';
 import PostOptionDialog from "../../activity/componants/PostOptionDialog";
 import { FiMoreVertical } from "react-icons/fi";
+import api from "@/app/AuthLayout/refresh";
 
 interface ApiImage {
   url?: string;
@@ -87,12 +88,17 @@ const { baseUrl, user } = auth;
 
     const fetchFloors = async () => {
       try {
-        const res = await axios.get(`${baseUrl}/properties/${propertyId}/floors`);
-        const all = res.data.data?.floors || [];
-        const nonEmpty = all.filter((f: Floor) => (f.filledCells ?? 0) > 0);
-        const lastFilled = nonEmpty.length ? nonEmpty[nonEmpty.length - 1] : null;
-        setFloors(lastFilled ? [lastFilled] : []);
-        setSelectedCell(null);
+        const res = await api.get(`/properties/${propertyId}/floors`);
+      const floorPlan = res.data.data?.floorPlan;
+
+if (floorPlan) {
+  setFloors([floorPlan]);
+} else {
+  setFloors([]);
+}
+
+setSelectedCell(null);
+
       } catch (err) {
         console.error("fetchFloors error", err);
       }
@@ -174,11 +180,8 @@ const  navi=  useRouter()
     return;
   }
   try {
-    const response = await axios.delete(
-      `${baseUrl}/properties/${propertyId}/floors/${currentFloor.id}/cancel`, {
-        headers: { Authorization: `Bearer ${localStorage.getItem("accessToken")}` },
-      }
-    
+    const response = await api.delete(
+      `/properties/${propertyId}/floors/${currentFloor.id}/cancel`
     );
 
     console.log("Floor deleted:", response.data);

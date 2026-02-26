@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useContext, useState } from "react";
 import AuthContext from "@/app/providers/AuthContext";
 import axios from "axios"
+import api from "../refresh";
 // 1
 type RegisterForm = {
   firstName: string;
@@ -26,9 +27,7 @@ export default function RegisterPage() {
     formState: { errors },
     watch,
   } = useForm<RegisterForm>();
-
   const password = watch("password");
-
   // 2
  const onSubmit = async (data: RegisterForm) => {
   setApiErrors([]);
@@ -48,15 +47,11 @@ export default function RegisterPage() {
   console.log("Register payload ", payload);
 
   try {
-    const response = await axios.post(`${baseUrl}/Auth/register`, payload, {
-      headers: {
-        "Content-Type": "application/json",
-      },
-    });
+    const response = await api.post(`/Auth/register`, payload, );
 
     const result = response.data;
 
-    if (response.status === 200 && result.success) {
+    if ( result?.success) {
       router.push("/AuthLayout/verifi");
     } else {
       if (result.errors && Array.isArray(result.errors)) {
@@ -79,16 +74,8 @@ export default function RegisterPage() {
     setIsLoading(false);
   }
 };
-
   // 3
   const goToLogin = () => router.push("/AuthLayout/Login");
-
-
-
-
-
-
-  
   return (
     <div className="min-h-screen bg-[#FFFFFF] p-3 overflow-y-auto">
       <div className="w-full max-w-md bg-white shadow-xl rounded-2xl px-6 py-6 mx-auto">

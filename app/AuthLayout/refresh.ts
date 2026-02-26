@@ -1,15 +1,18 @@
 import axios from "axios";
+import { getToken } from "./tokenMemory";
+import { refreshToken } from "./Token_Manager";
 
-const baseUrl = process.env.NEXT_PUBLIC_BASE_URL;
+const baseUrl = "http://localhost:5000/api";
 
 const api = axios.create({
   baseURL: baseUrl,
   withCredentials: true,
 });
 
+// ================= REQUEST =================
 api.interceptors.request.use(
   (config) => {
-    const accessToken = localStorage.getItem("accessToken");
+    const accessToken = getToken();
 
     if (accessToken) {
       config.headers.Authorization = `Bearer ${accessToken}`;
@@ -20,6 +23,7 @@ api.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
+// ================= RESPONSE =================
 api.interceptors.response.use(
   (response) => response,
   async (error) => {
@@ -31,26 +35,17 @@ api.interceptors.response.use(
     ) {
       originalRequest._retry = true;
 
-      try {
-        const refreshResponse = await axios.post(
-          `${baseUrl}/Auth/refresh-token`,
-          {},
-          { withCredentials: true }
-        );
+      const newAccessToken = await refreshToken();
 
-        const newAccessToken = refreshResponse.data.accessToken;
-
-        localStorage.setItem("accessToken", newAccessToken);
-
-        originalRequest.headers.Authorization =
-          `Bearer ${newAccessToken}`;
-
-        return api(originalRequest);
-      } catch (refreshError) {
-        localStorage.removeItem("accessToken");
+      if (!newAccessToken) {
         window.location.href = "/AuthLayout/Login";
-        return Promise.reject(refreshError);
+        return Promise.reject(error);
       }
+
+      originalRequest.headers.Authorization =
+        `Bearer ${newAccessToken}`;
+
+      return api(originalRequest);
     }
 
     return Promise.reject(error);

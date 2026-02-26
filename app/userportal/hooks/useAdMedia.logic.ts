@@ -1,5 +1,6 @@
 import { useState } from "react";
 import axios from "axios";
+import api from "@/app/AuthLayout/refresh";
 
 export interface AdMedia {
   id?: number;
@@ -13,10 +14,10 @@ export interface AdMedia {
 
 interface UseAdMediaProps {
   baseUrl: string;
-  token: string | null;
+ 
 }
 
-export const useAdMedia = ({ baseUrl, token }: UseAdMediaProps) => {
+export const useAdMedia = ({  }: UseAdMediaProps) => {
   const [media, setMedia] = useState<AdMedia[]>([]);
   const [mainMediaCount, setMainMediaCount] = useState(0);
 
@@ -24,16 +25,20 @@ export const useAdMedia = ({ baseUrl, token }: UseAdMediaProps) => {
   const addMedia = (files: FileList | null, type: "image" | "video") => {
     if (!files) return;
 
-    const newMedia: AdMedia[] = Array.from(files).map((file) => ({
-      uid: `${Date.now()}-${Math.random()}`,
-      file,
-      url: URL.createObjectURL(file),
-      type,
-      isMain: false,
-      status: "pending",
-    }));
+    setMedia((prev) => {
+      const hasMain = prev.some((m) => m.isMain);
 
-    setMedia((prev) => [...prev, ...newMedia]);
+      const newMedia: AdMedia[] = Array.from(files).map((file, index) => ({
+        uid: `${Date.now()}-${Math.random()}`,
+        file,
+        url: URL.createObjectURL(file),
+        type,
+        isMain: !hasMain && index === 0 && type === "image",
+        status: "pending",
+      }));
+
+      return [...prev, ...newMedia];
+    });
   };
 
   // Remove media by id, uid, or index
@@ -48,7 +53,7 @@ export const useAdMedia = ({ baseUrl, token }: UseAdMediaProps) => {
       });
 
       //  object URLs for removed items
-      prev.forEach((item) => {
+      prev.map((item) => {
         if (!updated.includes(item) && item.url?.startsWith("blob:")) {
           URL.revokeObjectURL(item.url);
         }
@@ -131,14 +136,10 @@ export const useAdMedia = ({ baseUrl, token }: UseAdMediaProps) => {
       formData.append("AnyRequiredField2", "temp");
 
       try {
-        const res = await axios.post(
-          `${baseUrl}/Property/${propertyId}/media`,
+        const res = await api.post(
+          `/Property/${propertyId}/media`,
           formData,
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-          }
+         
         );
 
         return { file: item.file, status: "uploaded" as const, id: res.data?.data?.mediaId };
@@ -164,14 +165,10 @@ export const useAdMedia = ({ baseUrl, token }: UseAdMediaProps) => {
   // Set main media on API (for update mode)
   const setMainOnApi = async (propertyId: number, mediaId: number) => {
     try {
-      await axios.patch(
-        `${baseUrl}/Property/${propertyId}/media/${mediaId}/set-main`,
+      await api.patch(
+        `/Property/${propertyId}/media/${mediaId}/set-main`,
         {},
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
+      
       );
 
       // Update local state
@@ -198,13 +195,9 @@ export const useAdMedia = ({ baseUrl, token }: UseAdMediaProps) => {
   // Delete media from API
   const deleteMediaFromApi = async (propertyId: number, mediaId: number) => {
     try {
-      await axios.delete(
-        `${baseUrl}/Property/${propertyId}/media/${mediaId}`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
+      await api.delete(
+        `/Property/${propertyId}/media/${mediaId}`,
+        
       );
 
       // Remove from local state

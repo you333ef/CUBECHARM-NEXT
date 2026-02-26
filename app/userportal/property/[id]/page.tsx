@@ -4,7 +4,6 @@ import PropertyPage from "./Property.page";
 // UI / layout => PropertyView.tsx
 // Actions issue      => ActionIcons.tsx
 // Seller issue       => SellerProfile.tsx
-
 export default PropertyPage;
 
 

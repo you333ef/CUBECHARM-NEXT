@@ -5,11 +5,12 @@ import { useRouter } from "next/navigation";
 import axios from "axios";
 import { toast } from "sonner";
 import AuthContext from "@/app/providers/AuthContext";
+import api from "../refresh";
 
 export default function GoogleCallbackPage() {
   const router = useRouter();
   const auth = useContext(AuthContext)!;
-  const { baseUrl } = auth;
+  const { baseUrl, login } = auth;
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -28,19 +29,17 @@ export default function GoogleCallbackPage() {
 
     const loginWithGoogle = async () => {
       try {
-        const response = await axios.post(
-          baseUrl + "/Auth/google",
+        const response = await api.post(
+          "/Auth/google",
           { code },
           {
-            headers: {
-              "Content-Type": "application/json",
-            },
+            
           }
         );
 
         const { accessToken } = response.data;
 
-        localStorage.setItem("accessToken", accessToken);
+        login(accessToken);
 
         if (window.opener) {
           window.opener.postMessage(
@@ -52,7 +51,7 @@ export default function GoogleCallbackPage() {
           toast.success("Logged in with Google successfully ");
           router.replace("/");
         }
-      } catch (error) {
+      } catch (error: any) {
         console.error("Google login error:", error);
 
         if (window.opener) {
@@ -69,7 +68,7 @@ export default function GoogleCallbackPage() {
     };
 
     loginWithGoogle();
-  }, [router, baseUrl]);
+  }, [router, baseUrl, login]);
 
   return (
     <div className="flex h-screen items-center justify-center">

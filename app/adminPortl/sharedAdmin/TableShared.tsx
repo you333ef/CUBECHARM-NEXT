@@ -1,9 +1,7 @@
-"use client"
+"use client";
 import { usePathname } from "next/navigation";
 import React, { useState } from "react";
 import { FiMoreHorizontal, FiCheck, FiX, FiEye, FiInfo } from "react-icons/fi";
-
-
 
 interface TableSharedProps<T> {
   rows: T[];
@@ -28,19 +26,19 @@ const TableShared = <T extends Record<string, any>>({
   truncateColumns = [],
   headerDisplayNames = {} as any,
 }: TableSharedProps<T>) => {
+  const Location = usePathname() || "";
+  const LocationContain = Location.includes("/adminPortl/reports");
+
   const [openDropdown, setOpenDropdown] = useState<number | null>(null);
 
   const toggleDropdown = (index: number) => {
-    setOpenDropdown(prev => (prev === index ? null : index));
+    setOpenDropdown((prev) => (prev === index ? null : index));
   };
 
   const closeDropdown = () => setOpenDropdown(null);
 
   const slugify = (s: string, i: number) =>
-    `tablehead-${i}-${String(s || "").toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-_]/g, "")}`;
-const Location = usePathname();
-
-  const LocationContain = Location.includes('/adminPortl/reports');
+    s.toLowerCase().replace(/\s+/g, "-") + "-" + i;
 
   return (
     <div className="w-full">
@@ -115,45 +113,61 @@ const Location = usePathname();
                           <div className="py-1">
                             {funView && (
                               <button
-                                onClick={() => { funView(item); closeDropdown(); }}
+                                onClick={() => {
+                                  funView(item);
+                                  closeDropdown();
+                                }}
                                 className="w-full px-4 py-2 text-left text-sm text-gray-900 hover:bg-gray-50 flex items-center gap-3"
                               >
                                 <FiEye className="w-4 h-4" /> View
                               </button>
                             )}
+
                             {funApprove && (
                               <button
-                                onClick={() => { funApprove(item); closeDropdown(); }}
+                                onClick={() => {
+                                  funApprove(item);
+                                  closeDropdown();
+                                }}
                                 className="w-full px-4 py-2 text-left text-sm text-gray-900 hover:bg-gray-50 flex items-center gap-3"
                               >
-                             
-                                <FiCheck className="w-4 h-4" />  {LocationContain?'Delete User':'Approve'}
+                                <FiCheck className="w-4 h-4" /> {LocationContain ? "Delete Content" : "Approve"}
                               </button>
                             )}
+
                             {funReject && (
                               <button
-                                onClick={() => { funReject(item); closeDropdown(); }}
+                                onClick={() => {
+                                  funReject(item);
+                                  closeDropdown();
+                                }}
                                 className="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-gray-50 flex items-center gap-3"
                               >
-                                <FiX className="w-4 h-4" />
-                                 {LocationContain?'Block User':'Reject'}
-                                 
+                                <FiX className="w-4 h-4" /> {LocationContain ? "Block User" : "Reject / Block"}
                               </button>
                             )}
-                            {funRemove && (
-                              <button
-                                onClick={() => { funRemove(item); closeDropdown(); }}
-                                className="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-gray-50 flex items-center gap-3"
-                              >
-                                <FiX className="w-4 h-4" /> Remove
-                              </button>
-                            )}
+
                             {funShowReason && (
                               <button
-                                onClick={() => { funShowReason(item); closeDropdown(); }}
+                                onClick={() => {
+                                  funShowReason(item);
+                                  closeDropdown();
+                                }}
                                 className="w-full px-4 py-2 text-left text-sm text-blue-600 hover:bg-gray-50 flex items-center gap-3"
                               >
-                                <FiInfo className="w-4 h-4" /> Show Reason
+                                <FiInfo className="w-4 h-4" /> Dismiss
+                              </button>
+                            )}
+
+                            {funRemove && (
+                              <button
+                                onClick={() => {
+                                  funRemove(item);
+                                  closeDropdown();
+                                }}
+                                className="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-gray-50 flex items-center gap-3"
+                              >
+                                <FiX className="w-4 h-4" /> Remove Report
                               </button>
                             )}
                           </div>
@@ -195,12 +209,22 @@ const Location = usePathname();
                           )}
                           {funApprove && (
                             <button onClick={() => { funApprove(item); closeDropdown(); }} className="w-full px-4 py-2 text-left text-sm text-gray-900 hover:bg-gray-50 flex items-center gap-3">
-                              <FiCheck className="w-4 h-4" /> Approve
+                              <FiCheck className="w-4 h-4" /> Delete Content
                             </button>
                           )}
                           {funReject && (
                             <button onClick={() => { funReject(item); closeDropdown(); }} className="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-gray-50 flex items-center gap-3">
-                              <FiX className="w-4 h-4" /> Reject
+                              <FiX className="w-4 h-4" /> Block User
+                            </button>
+                          )}
+                          {funShowReason && (
+                            <button onClick={() => { funShowReason(item); closeDropdown(); }} className="w-full px-4 py-2 text-left text-sm text-blue-600 hover:bg-gray-50 flex items-center gap-3">
+                              <FiInfo className="w-4 h-4" /> Dismiss
+                            </button>
+                          )}
+                          {funRemove && (
+                            <button onClick={() => { funRemove(item); closeDropdown(); }} className="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-gray-50 flex items-center gap-3">
+                              <FiX className="w-4 h-4" /> Remove Report
                             </button>
                           )}
                         </div>

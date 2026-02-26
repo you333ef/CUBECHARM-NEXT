@@ -28,14 +28,21 @@ const PropertyView = ({
   onToggleFavorite,
   onChat,
   onDetails,
+  floorPlan,
   onOpenMenu,
   isOwner,
   propertyId,
+  adminMode = false,
+  fromReports = false,
+  onAdminDelete,
+  onAdminBlock,
+  onAdminDismiss, // new prop
 }: {
   loading: boolean;
   property: any;
   relatedProperties: any[];
   NumberOfFloors: number;
+  floorPlan: any;
   isFavorite: boolean;
   onToggleFavorite: () => void;
   onChat: () => void;
@@ -43,10 +50,29 @@ const PropertyView = ({
   onOpenMenu: () => void;
   isOwner: boolean;
   propertyId: string;
+  adminMode?: boolean;
+  fromReports?: boolean;
+  onAdminDelete?: () => void;
+  onAdminBlock?: () => void;
+  onAdminDismiss?: () => void;
 }) => {
+  const router = require('next/navigation').useRouter();
+  const handleBack = () => {
+    if (fromReports) {
+      router.push('/adminPortl/reports');
+    } else {
+      router.back();
+    }
+  };
   return (
     <div className="w-full px-4 sm:px-6 lg:px-8 py-6 md:py-8 pt-16 md:pt-20">
       <div className="bg-white rounded-xl p-4 sm:p-6">
+        {/* Back Button (admin only) */}
+        {adminMode && (
+          <button onClick={handleBack} className="mb-4 px-4 py-2 bg-gray-200 rounded hover:bg-gray-300 font-semibold">
+            Back
+          </button>
+        )}
         {loading ? (
           <LoadingSkeleton />
         ) : (
@@ -63,40 +89,75 @@ const PropertyView = ({
             </div>
 
             {/* action icons */}
-            <ActionIcons
-              isFavorite={isFavorite}
-              onToggleFavorite={onToggleFavorite}
-              onChat={onChat}
-              onDetails={onDetails}
-            />
+            {!adminMode && (
+              <ActionIcons
+                isFavorite={isFavorite}
+                onToggleFavorite={onToggleFavorite}
+                onChat={onChat}
+                onDetails={onDetails}
+              />
+            )}
+
+            {/* Admin actions */}
+            {adminMode && (
+              <>
+                <div className="flex gap-4 my-4">
+                  <button
+                    className="flex-1 py-2 px-4 bg-[#0a0a0a] text-white rounded-lg font-bold hover:bg-[#060605]"
+                    onClick={onAdminDelete}
+                    aria-label="Delete Property"
+                  >
+                    Delete Property
+                  </button>
+                  <button
+                    className="flex-1 py-2 px-4 bg-blue-600 text-white rounded-lg font-bold hover:bg-blue-700"
+                    onClick={onAdminBlock}
+                    aria-label="Block User"
+                  >
+                    Block User
+                  </button>
+                </div>
+
+                {/* Dismiss button centered under the two */}
+                {onAdminDismiss && (
+                  <div className="flex justify-center mb-4">
+                    <button
+                      onClick={onAdminDismiss}
+                      className="px-6 py-2 bg-gray-300 text-gray-800 rounded-lg font-semibold hover:bg-gray-400"
+                      aria-label="Dismiss Report"
+                    >
+                      Dismiss
+                    </button>
+                  </div>
+                )}
+              </>
+            )}
 
             {/* seller profile */}
             <div className="mt-4">
-              <SellerProfile owner={property?.owner ?? null} ownerId={property?.ownerId} onOpenMenu={onOpenMenu} />
+              <SellerProfile owner={property?.owner ?? null} ownerId={property?.ownerId} onOpenMenu={!adminMode ? onOpenMenu : undefined} />
             </div>
 
             {/* buttons */}
-            <div className="flex flex-col sm:flex-row gap-3 mt-4">
-              {NumberOfFloors > 0 && (
-                <Link href={`/userportal/proModewep/${propertyId}`} className="flex-1 text-center py-3 px-6 bg-white text-blue-600 font-bold rounded-lg text-base border-2 border-blue-600">
-                  PRO MODE
-                </Link>
-              )}
-
-              <Link href="/userportal/payment" className="flex-1 text-center py-3 px-6 bg-green-500 text-white font-bold rounded-lg text-base">
-                Pay Now
-              </Link>
-            </div>
+            {!adminMode && (
+              <div className="flex flex-col sm:flex-row gap-3 mt-4">
+                {floorPlan  && (
+                  <Link href={`/userportal/proModewep/${propertyId}`} className="flex-1 text-center py-3 px-6 bg-white text-blue-600 font-bold rounded-lg text-base border-2 border-blue-600">
+                    PRO MODE
+                  </Link>
+                )}
+              </div>
+            )}
 
             {/* characteristics */}
             <div className="mt-6 text-center sm:text-left">
               <h2 className="text-xl font-semibold mb-3 text-gray-800">Characteristics</h2>
               <ul className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-gray-700">
                 <li>
-                  <span className="font-semibold w-24">Full Size:</span> {property.size}m²
+                  <span className="font-semibold w-24">Full Size:</span> {property?.size != null ? property.size + "m²" : "-"}
                 </li>
                 <li>
-                  <span className="font-semibold w-24">Location:</span> {property.location}
+                  <span className="font-semibold w-24">Location:</span> {property?.location ?? "-"}
                 </li>
               </ul>
             </div>
@@ -105,7 +166,7 @@ const PropertyView = ({
             <div className="mt-6 text-center sm:text-left">
               <h2 className="text-xl font-semibold mb-3 text-gray-800">Description</h2>
               <p className="text-gray-700 leading-relaxed">
-                {property.description}
+                {property?.description  ?? "No description provided."}
                 <Link href={`/userportal/readmore/${propertyId}`} className="text-blue-600 font-semibold hover:underline ml-1">
                   Read More
                 </Link>
@@ -117,7 +178,6 @@ const PropertyView = ({
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
               {relatedProperties.map((item) => {
                 const image = item.imageUrl1 ? `http://localhost:5000/${item.imageUrl1}` : "https://cdn.dubaiimmobilier.fr/wp-content/uploads/2024/06/Sky-High-Luxury.webp";
-
                 return (
                   <PropertyCard
                     key={item.propertyId}
@@ -137,6 +197,7 @@ const PropertyView = ({
                     ownerProfileImage={item.ownerProfileImage}
                     ownerRating={item.ownerRating}
                     ownerUserId={item.ownerUserId}
+                    isFavorite={item.isFavourite ?? item.isFavorite}
                   />
                 );
               })}

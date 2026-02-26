@@ -5,6 +5,7 @@ import axios from "axios";
 import { toast } from "sonner";
 import AuthContext from "@/app/providers/AuthContext";
 import { AdMedia } from "./useAdMedia.logic";
+import { getToken } from "@/app/AuthLayout/Token_Manager";
 
 export type FormData = {
   category: string;
@@ -37,7 +38,24 @@ interface UseAdFormReturn extends UseFormReturn<FormData> {
 }
 
 export const useAdForm = ({ isUpdate, propertyId, onMediaSync }: UseAdFormProps): UseAdFormReturn => {
-  const form = useForm<FormData>();
+ const form = useForm<FormData>({
+  defaultValues: {
+    category: "",
+    size: "",
+    width: "",
+    length: "",
+    city: "",
+    address: "",
+    title: "",
+    price: "",
+    description: "",
+    listingType: "rent",
+    currency: "USD",
+    negotiable: false,
+    phone: "",
+    locationLink: "",
+  },
+});
   const router = useRouter();
   const searchParams = useSearchParams();
   const { baseUrl } = useContext(AuthContext)!;
@@ -46,7 +64,7 @@ export const useAdForm = ({ isUpdate, propertyId, onMediaSync }: UseAdFormProps)
 
   const token =
     typeof window !== "undefined"
-      ? localStorage.getItem("accessToken")
+      ? getToken()
       : null;
 
   const baseURL = "http://localhost:5000";
@@ -66,26 +84,25 @@ export const useAdForm = ({ isUpdate, propertyId, onMediaSync }: UseAdFormProps)
         const data = res.data.data;
 
         // Parse location into city and address
-        const locationParts = data.location?.split(",") || [];
-        const city = locationParts[0]?.trim() || "";
-
-        form.reset({
-          title: data.title ?? "",
-          description: data.description ?? "",
-          category: "",
-          listingType: data.listingType === "Sale" ? "sale" : "rent",
-          price: String(data.price ?? ""),
-          currency: data.currency ?? "USD",
-          negotiable: data.negotiable ?? false,
-          size: String(data.size ?? ""),
-          width: String(data.width ?? ""),
-          length: String(data.length ?? ""),
-          city: city,
-          address: data.location ?? "",
-          locationLink: "",
-          phone: "",
-        });
-
+      const city = data.city ?? "";
+const address = data.address ?? "";
+const link = data.link ?? "";
+      form.reset({
+  title: data.title ?? "",
+  description: data.description ?? "",
+  category: "",
+  listingType: data.listingType === "Sale" ? "sale" : "rent",
+  price: String(data.price ?? ""),
+  currency: data.currency ?? "USD",
+  negotiable: data.negotiable ?? false,
+  size: String(data.totalArea ?? ""),
+  width: String(data.width ?? ""),
+  length: String(data.length ?? ""),
+  city: city,
+  address: address,
+  locationLink: link,
+  phone: "",
+});
         // Sync media
         if (onMediaSync) {
           onMediaSync(data.media || []);
@@ -97,7 +114,7 @@ export const useAdForm = ({ isUpdate, propertyId, onMediaSync }: UseAdFormProps)
     };
 
     fetchProperty();
-  }, [isUpdate, propertyId, token, baseUrl, form, onMediaSync]);
+  }, [isUpdate, propertyId, token, baseUrl]);
 
   // Submit handler
   const onSubmit = async (data: FormData): Promise<number | undefined> => {
@@ -124,8 +141,7 @@ export const useAdForm = ({ isUpdate, propertyId, onMediaSync }: UseAdFormProps)
         country: "United States",
         city: data.city,
         address: data.address,
-        latitude: 0,
-        longitude: 0,
+        link: data.locationLink || "",
       },
     };
 

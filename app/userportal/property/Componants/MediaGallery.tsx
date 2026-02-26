@@ -56,7 +56,6 @@ const MediaGallerySkeleton = () => (
 
 // 6
 const MediaGallery = memo(({ images }: MediaGalleryProps) => {
-  // 🔹 map once (performance safe)
   const mediaItems = images.map((img, index) => ({
     id: img.id,
     src: img.url,

@@ -11,6 +11,7 @@ import CellActionsModal from "./floor-plan/CellActionsModal";
 import { createFloorPlan } from "./services/floor.service";
 import CenterGrid from "./components/floor/CenterGrid";
 import GridAxis from "./components/floor/GridAxis";
+import api from "@/app/AuthLayout/refresh";
 interface CellData {
   id: string;
   images: File[];
@@ -34,7 +35,6 @@ const Pro_Mode_Cycle = () => {
 // Auth context & API base config
   const auth = useContext(AuthContext)!;
   const { baseUrl } = auth;
-  const accessToken = typeof window !== "undefined" ? localStorage.getItem("accessToken") : null;
 // Floor data model (all floors with their grid + cells)
   const [floors, setFloors] = useState<FloorData[]>([
     {
@@ -110,23 +110,38 @@ const uploadFloorCellsImages = async (floorId?: number) => {
   // Get  floor id from API 
   const targetFloor = floors[currentFloorIndex];
   const id = floorId ?? targetFloor?.apiFloorId;
-  if (!id) toast.dismiss("NO FLOOR ID Now");
-  // Collect only cells that contain new image files
-  const cellsMap = new Map<string, { col: number; row: number; files: File[] }>();
-  Object.entries(floors[currentFloorIndex].cells).forEach(([cellId, cell]: any) => {
-    const imgs: File[] = cell?.images ?? [];
-    if (!imgs.length) return;
-    // Extract row&col from cell id
-    const [, rowStr, colStr] = cellId.split("-");
-    const row = Number(rowStr);
-    const col = Number(colStr);
-    const key = `${col}-${row}`;
-    cellsMap.set(key, { col, row, files: imgs });
-  });
-  const totalCells = cellsMap.size;
-  if (totalCells === 0) toast.dismiss("no Images - nothing to upload");
+  
+ if (!id) {
+  toast.error("NO FLOOR ID Now");
+  return;
+}
+
+// Collect only cells that contain new image files
+const cellsMap = new Map<string, { col: number; row: number; files: File[] }>();
+Object.entries(floors[currentFloorIndex].cells).forEach(([cellId, cell]: any) => {
+  const imgs: File[] = cell?.images ?? [];
+  if (!imgs.length) return;
+
+  // cellId جاية بالشكل "cell-ROW-COL" من CenterGrid
+  const [, rowStr, colStr] = cellId.split("-");
+  const row = Number(rowStr);
+  const col = Number(colStr);
+
+  if (Number.isNaN(row) || Number.isNaN(col)) {
+    console.error("Invalid cellId format:", cellId);
+    return;
+  }
+
+  const key = `${col}-${row}`;
+  cellsMap.set(key, { col, row, files: imgs });
+});
+const totalCells = cellsMap.size;
+if (totalCells === 0) {
+  toast.error("no Images - nothing to upload");
+  return;
+}
   const allKeys = Array.from(cellsMap.keys());
-  const BATCH_SIZE = 10; // upload 10 cells per request
+  const BATCH_SIZE = 10;
   let processedCells = 0;
   const aggregatedResults: any[] = [];
   let aggregatedTotalImages = 0;
@@ -136,7 +151,7 @@ const uploadFloorCellsImages = async (floorId?: number) => {
     const batchKeys = allKeys.slice(i, i + BATCH_SIZE);
     const formData = new FormData();
     const batchCellKeys = new Set<string>();
-    // Add files of this batch to FormData using API field format
+    // Add files of this 
     batchKeys.forEach((k) => {
       const entry = cellsMap.get(k)!;
       entry.files.forEach((file, h) => {
@@ -146,14 +161,10 @@ const uploadFloorCellsImages = async (floorId?: number) => {
       });
     });
     // Send batch to server
-    const resp = await axios.post(
-      `${baseUrl}/properties/${propertyId}/floors/${id}/cells/batch-upload`,
+    const resp = await api.post(
+      `/properties/${propertyId}/floors/${id}/cells/batch-upload`,
       formData,
-      {
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-        },
-      }
+      
     );
     // Collect server response info
     if (resp?.data?.data) {
@@ -178,13 +189,14 @@ const uploadFloorCellsImages = async (floorId?: number) => {
     },
   };
 };
- // Create floor upload its images, then submit it
+ // Create floor, upload its images, then submit it
 const handleCreateAndSubmitFloor = async () => {
   // Prevent double submit (To safe)
   if (isLoading || isSubmitted) return;
   setIsLoading(true);
+
   try {
-    //  current UI state into floors array
+    // Sync current UI state into floors array
     const updatedFloors = [...floors];
     updatedFloors[currentFloorIndex] = {
       ...updatedFloors[currentFloorIndex],
@@ -196,7 +208,9 @@ const handleCreateAndSubmitFloor = async () => {
       multiImageCount: currentFloor.multiImageCount,
     };
     setFloors(updatedFloors);
+
     let apiFloorId = updatedFloors[currentFloorIndex].apiFloorId;
+
     // If floor not created yet create it first
     if (!apiFloorId) {
       if (!(currentFloor.gridBackgroundFile instanceof File)) {
@@ -204,9 +218,9 @@ const handleCreateAndSubmitFloor = async () => {
         setIsLoading(false);
         return;
       }
+
       const created = await createFloorPlan({
         baseUrl,
-        accessToken,
         propertyId,
         payload: {
           gridCellsX: currentFloor.width,
@@ -216,57 +230,67 @@ const handleCreateAndSubmitFloor = async () => {
           backgroundImage: currentFloor.gridBackgroundFile,
         },
       });
+
       apiFloorId = created?.data?.id ?? created?.id ?? null;
-      if (!apiFloorId) toast.error("NO FLOOR ID");
-      // Save new API floor id locally
+      if (!apiFloorId) {
+        toast.error("NO FLOOR ID");
+        setIsLoading(false);
+        return;
+      }
+
+      // Save new API floor id
       updatedFloors[currentFloorIndex].apiFloorId = apiFloorId;
       setFloors(updatedFloors);
     }
+
     // Upload all cell images for this floor
     setUploadProgress(0);
     const uploadResp = await uploadFloorCellsImages(Number(apiFloorId));
+
     if (uploadResp?.data) {
       const processed = uploadResp.data.totalCellsProcessed ?? 0;
       const imagesUploaded = uploadResp.data.totalImagesUploaded ?? 0;
       toast.success(`Uploaded ${processed} cells, ${imagesUploaded} images`);
       setUploadProgress(1);
     }
+
     // Final submit step (mark floor as completed in backend)
-    await axios.post(
-      `${baseUrl}/properties/${propertyId}/floors/${apiFloorId}/submit-promode`,
+    await api.post(
+      `/properties/${propertyId}/floors/${apiFloorId}/submit-promode`,
       null,
-      {
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-        },
-      }
     );
+
     // After successful submit reset local state and go back
     setIsSubmitted(true);
-  router.replace(`/userportal/property/${propertyId}`);
+    router.replace(`/userportal/property/${propertyId}`);
+
     setFloors(prev => {
       const up = [...prev];
       up[currentFloorIndex] = { ...up[currentFloorIndex], cells: {} };
       return up;
     });
+
     toast.success("Floor created and submitted successfully");
-   
   } catch (error: any) {
     console.error("handleCreateAndSubmitFloor error:", error);
-    // Handle known errors
+
     if (error?.message === "NO FLOOR ID") {
       toast.error("Missing floor id");
-    } else if (error?.message) {
-      toast.error(error.message);
     } else if (axios.isAxiosError(error)) {
       const serverMessage =
         error.response?.data?.message ||
-        error.response?.data?.errors?.join(", ") ||
+        (Array.isArray(error.response?.data?.errors)
+          ? error.response.data.errors.join(", ")
+          : "") ||
         "Submission failed";
+
+      console.error("FLOOR CREATE SERVER ERROR:", error.response?.data);
       toast.error(serverMessage);
+    } else if (error?.message) {
+      toast.error(error.message);
     } else {
       toast.error("submit failed");
-      router.back(); // TODO: maybe redirect to a safer page
+      router.back();
     }
   } finally {
     setIsLoading(false);
@@ -416,62 +440,65 @@ const removeBackground = () => {
     return hasMinimumCells && oldValidation;
   };
   const isReady = isSubmitAllowed();
-  const performDeleteFloor = async () => {
-    const deletedFloor = floors[currentFloorIndex];
-    try {
-      if (deletedFloor.apiFloorId) {
-        await axios.delete(
-          `${baseUrl}/properties/${propertyId}/floors/${deletedFloor.apiFloorId}/cancel`,
-          {
-            headers: {
-              Authorization: `Bearer ${accessToken}`,
-            },
-          }
-        );
-      }
-      if (deletedFloor.gridBackgroundUrl) {
-        URL.revokeObjectURL(deletedFloor.gridBackgroundUrl);
-      }
-      Object.values(deletedFloor.cells).forEach((cell: any) => {
-        (cell.imageUrls || []).forEach(URL.revokeObjectURL);
-      });
-      let updatedFloors = floors.filter((_, idx) => idx !== currentFloorIndex);
-      if (updatedFloors.length === 0) {
-        updatedFloors = [
-          {
-            id: 1,
-            width: 0,
-            height: 0,
-            cells: {},
-            gridBackgroundFile: null,
-            gridBackgroundUrl: null,
-            multiImageCount: 1,
-          },
-        ];
-      } else {
-        updatedFloors.forEach((floor, idx) => {
-          floor.id = idx + 1;
-        });
-      }
-      setFloors(updatedFloors);
-      const newIndex = currentFloorIndex > 0 ? currentFloorIndex - 1 : 0;
-      setCurrentFloorIndex(newIndex);
-      router.back()
-      toast.success("Floor deleted successfully");
-    } catch (error) {
-      console.error(error);
-      toast.error("Failed to delete floor");
+const performDeleteFloor = async () => {
+  const deletedFloor = floors[currentFloorIndex];
+
+  if (!deletedFloor?.apiFloorId) return;
+
+  try {
+    await api.delete(
+      `/properties/${propertyId}/floors/${deletedFloor.apiFloorId}/cancel`
+    );
+    if (deletedFloor.gridBackgroundUrl) {
+      URL.revokeObjectURL(deletedFloor.gridBackgroundUrl);
     }
-  };
-  const handleDeleteFloor = () => {
-    setConfirmDelete(true);
-  };
-  const confirmDeleteAction = () => {
-    performDeleteFloor();
-    setConfirmDelete(false);
-  };
-  const cancelDeleteAction = () => {
-    setConfirmDelete(false);
+    Object.values(deletedFloor.cells).forEach((cell: any) => {
+      (cell.imageUrls || []).forEach(URL.revokeObjectURL);
+    });
+    let updatedFloors = floors.filter((_, idx) => idx !== currentFloorIndex);
+    if (updatedFloors.length === 0) {
+      updatedFloors = [
+        {
+          id: 1,
+          width: 0,
+          height: 0,
+          cells: {},
+          gridBackgroundFile: null,
+          gridBackgroundUrl: null,
+          multiImageCount: 1,
+        },
+      ];
+    } else {
+      updatedFloors.forEach((floor, idx) => {
+        floor.id = idx + 1;
+      });
+    }
+    setFloors(updatedFloors);
+    const newIndex = currentFloorIndex > 0 ? currentFloorIndex - 1 : 0;
+    setCurrentFloorIndex(newIndex);
+    router.back();
+    toast.success("Floor deleted successfully");
+  } catch (error: any) {
+    if (error.response?.status === 401) {
+      console.error("Unauthorized - user may be logged out");
+    } else if (error.response) {
+      console.error("Failed to delete floor:", error.response?.data || error.message);
+    } else {
+      console.error(error);
+    }
+    toast.error("Failed to delete floor");
+  }
+};
+
+const handleDeleteFloor = () => {
+  setConfirmDelete(true);
+};
+const confirmDeleteAction = () => {
+  performDeleteFloor();
+  setConfirmDelete(false);
+};
+const cancelDeleteAction = () => {
+  setConfirmDelete(false);
   };
   return (
     <div className="flex flex-col-reverse lg:flex-row min-h-screen bg-background p-4 md:p-8 gap-4 md:gap-8">

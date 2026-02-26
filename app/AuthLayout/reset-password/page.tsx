@@ -1,10 +1,13 @@
 "use client";
 
+import React from "react";
 import { useForm } from "react-hook-form";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useContext } from "react";
 import AuthContext from "@/app/providers/AuthContext";
 import { toast } from "sonner";
+import api from "../refresh";
+import axios from "axios";
 
 type FormData = {
   newPassword: string;
@@ -40,45 +43,43 @@ const ResetPasswordPage = () => {
 
  const onSubmit = async (data: FormData) => {
   try {
-    const res = await fetch(`${baseUrl}/Auth/reset-password`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        token,
-        email,
-        newPassword: data.newPassword,
-        confirmNewPassword: data.confirmNewPassword,
-      }),
+    const response = await api.post("/Auth/reset-password", {
+      token,
+      email,
+      newPassword: data.newPassword,
+      confirmNewPassword: data.confirmNewPassword,
     });
 
-    let result: any;
-    try {
-      result = await res.json();
-    } catch (jsonError) {
-      console.error("Failed to parse JSON from response:", jsonError);
-      result = null;
-    }
+    const result = response.data;
 
-    if (res.ok && result?.success) {
+    if (result.success) {
       toast.success("Password reset successfully");
       router.push("/AuthLayout/Login");
     } else {
-      console.error("Reset password failed response:", res);
-      console.error("Reset password failed body:", result);
-
-      if (result?.message) {
-        toast.error(`Error: ${result.message}`);
-      } else if (result?.errors && Array.isArray(result.errors)) {
+      if (result.errors && Array.isArray(result.errors)) {
         result.errors.forEach((err: string) => toast.error(err));
+      } else if (result.message) {
+        toast.error(result.message);
       } else {
-        toast.error(`Reset password failed (status ${res.status})`);
+        toast.error("Reset password failed");
       }
     }
-  } catch (error) {
-    toast.error("Network error, please try again");
-    console.error("Reset password network error:", error);
+  } catch (error: any) {
+    if (axios.isAxiosError(error)) {
+      const msg =
+        error.response?.data?.message ||
+        (error.response?.data?.errors && error.response.data.errors[0]) ||
+        "Network error, please try again";
+      toast.error(msg);
+    } else if (error instanceof Error) {
+      toast.error(error.message);
+    } else {
+      toast.error("Unexpected error occurred");
+    }
+    console.error("Reset password error:", error);
   }
 };
+
 
 
   return (

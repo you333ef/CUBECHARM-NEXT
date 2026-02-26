@@ -6,7 +6,7 @@ interface InstructionsModalProps {
   onClose: () => void;
 }
 
-// Modal that shows usage instructions for building the floor grid
+// Modal  shows usage instructions for building the floor grid
 const FloorPlanInstructionsModal = ({
   isOpen,
   onClose,

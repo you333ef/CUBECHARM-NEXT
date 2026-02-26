@@ -1,10 +1,16 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { FaEnvelope, FaBell, FaChevronDown } from "react-icons/fa";
+import { FaBell, FaChevronDown } from "react-icons/fa";
+import {
+  IoChatbubbleEllipsesOutline,
+  IoChatbubbleEllipses,
+} from "react-icons/io5";
 import { FiMenu } from "react-icons/fi";
 
 import Notifications from "../../userportal/componants/shared/Notifications";
+import Link from "next/link";
+import { useMessagingContext } from "../../userportal/messaes/MessagingContext";
 import Image from "next/image";
 
 // 1
@@ -34,11 +40,11 @@ const ADMIN_Nav = ({ toggleSidebar }: AdminNavProps) => {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
+  const { unreadCount } = useMessagingContext();
+
   return (
-    //
     <div className="min-h-[60px] bg-white border-b border-gray-200 shadow-sm">
       <nav className="w-full flex items-center justify-between px-4 md:px-6 py-2">
-        
         {/* ==================== 6 ==================== */}
         <div className="flex items-center gap-3 md:gap-4">
           {/* 7*/}
@@ -57,14 +63,27 @@ const ADMIN_Nav = ({ toggleSidebar }: AdminNavProps) => {
 
         {/* ==================== 9 ==================== */}
         <div className="flex items-center gap-3 md:gap-6">
-          
-          {/* 10 */}
-          <div className="relative">
-            <FaEnvelope className="w-5 h-5" />
-            <span className="absolute -top-1.5 -right-2 bg-[#ff3b30] text-white text-[10px] px-1.5 rounded-full font-semibold">
-              10
-            </span>
-          </div>
+          {/* 10 - Dynamic Messages Icon */}
+          <Link
+            href="/userportal/messaes"
+            className={`relative flex items-center justify-center p-2 rounded-lg transition-all ${
+              (typeof window !== 'undefined' && window.location.pathname === "/userportal/messaes")
+                ? "text-blue-600"
+                : "text-gray-600 hover:text-blue-500 hover:bg-blue-50"
+            }`}
+            style={{ minWidth: 40 }}
+          >
+            {(typeof window !== 'undefined' && window.location.pathname === "/userportal/messaes") ? (
+              <IoChatbubbleEllipses size={22} />
+            ) : (
+              <IoChatbubbleEllipsesOutline size={22} />
+            )}
+            {unreadCount > 0 && (
+              <span className="absolute -top-1.5 -right-2 bg-red-500 text-white text-[10px] font-bold rounded-full w-4 h-4 flex items-center justify-center">
+                {unreadCount > 99 ? '99+' : unreadCount}
+              </span>
+            )}
+          </Link>
 
           {/* 11 */}
           <div className="relative">

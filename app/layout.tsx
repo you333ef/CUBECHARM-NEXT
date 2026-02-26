@@ -3,6 +3,7 @@ import "./globals.css";
 
 import LayoutWrapper from "./userportal/componants/LayoutWrapper";
 import { AuthProvider } from "./providers/AuthContext";
+import { MessagingProvider } from "./userportal/messaes/MessagingContext";
 import { Toaster } from "sonner";
 
 
@@ -39,7 +40,9 @@ export default function RootLayout({
           toastOptions={{ duration: 4000 }}
         />
         <AuthProvider>
-         {children}
+          <MessagingProvider>
+            {children}
+          </MessagingProvider>
         </AuthProvider>
       </body>
     </html>

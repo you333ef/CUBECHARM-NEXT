@@ -1,54 +1,53 @@
 'use client'
-import { useState, useEffect, useContext } from "react";
+import React from "react";
+import { useState, useEffect, useContext, useRef, useCallback } from "react";
 import { IoSearch, IoClose } from "react-icons/io5";
-// Component to display property cards
 import PropertyCard from "../componants/shared/PropertyCard";
-// Icons for page
 import { FaSlidersH, FaHistory } from "react-icons/fa";
 import AuthContext from "@/app/providers/AuthContext";
-import axios from "axios";
+import { toast } from "sonner";
+import api from "@/app/AuthLayout/refresh";
 
 const SEARCH = () => {
-  // State for search query
   const [searchQuery, setSearchQuery] = useState("");
-  // Toggle for filter visibility
   const [showFilter, setShowFilter] = useState(false);
-  // Toggle for search history visibility
   const [showSearches, setShowSearches] = useState(false);
-  // State for search history
   const [searchHistory, setSearchHistory] = useState<string[]>([]);
-  // State for minimum price filter
   const [priceMin, setPriceMin] = useState("");
-  // State for maximum price filter
   const [priceMax, setPriceMax] = useState("");
-  // State for date from filter (ignored for now)
   const [dateFrom, setDateFrom] = useState("");
-  // State for date to filter (ignored for now)
   const [dateTo, setDateTo] = useState("");
-  // State for loading indicator
   const [loading, setLoading] = useState(true);
-  // State for properties list
   const [properties, setProperties] = useState<any[]>([]);
   const { baseUrl } = useContext(AuthContext)!;
-
-  // Fetch properties based on search or feed
-  const fetchData = async () => {
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const swappingRef = useRef(false);
+  const fetchData = useCallback(async (params: {
+    query: string;
+    minPrice: string;
+    maxPrice: string;
+    fromDate: string;
+    toDate: string;
+  }) => {
     setLoading(true);
     try {
-      const isSearching = searchQuery.trim() !== '' || priceMin !== '' || priceMax !== '';
+      const { query, minPrice, maxPrice, fromDate, toDate } = params;
+      const isSearching = query.trim() !== '' || minPrice !== '' || maxPrice !== '' || fromDate !== '' || toDate !== '';
       const endpoint = isSearching ? 'search' : 'feed';
-      const params: any = {
+      const reqParams: any = {
         page: 1,
         pageSize: 24,
       };
       if (isSearching) {
-        if (searchQuery.trim()) params.q = searchQuery.trim();
-        if (priceMin) params.minPrice = Number(priceMin);
-        if (priceMax) params.maxPrice = Number(priceMax);
+        if (query.trim()) reqParams.q = query.trim();
+        if (minPrice) reqParams.minPrice = Number(minPrice);
+        if (maxPrice) reqParams.maxPrice = Number(maxPrice);
+        if (fromDate) reqParams.dateFrom = fromDate;
+        if (toDate) reqParams.dateTo = toDate;
       } else {
-        params.sort = 'recent';
+        reqParams.sort = 'recent';
       }
-      const response = await axios.get(`${baseUrl}/Property/${endpoint}`, { params });
+      const response = await api.get(`/Property/${endpoint}`, { params: reqParams });
       if (response.status === 200) {
         const items = response.data.data.items.map((item: any) => {
           const formatUrl = (url: string | null) => {
@@ -69,22 +68,52 @@ const SEARCH = () => {
     } finally {
       setLoading(false);
     }
-  };
-
-  // Load search history from localStorage
+  }, [baseUrl]);
   useEffect(() => {
     const saved = localStorage.getItem("searchHistory");
-    if (saved) {
-      setSearchHistory(JSON.parse(saved));
-    }
+    if (saved) setSearchHistory(JSON.parse(saved));
   }, []);
-
-  // Fetch data when search parameters change
+  // fetch & auto swap validation 
   useEffect(() => {
-    fetchData();
-  }, [searchQuery, priceMin, priceMax]);
+    if (debounceRef.current) clearTimeout(debounceRef.current);
 
-  // Save query to history if new and non-empty
+    const delay = swappingRef.current ? 0 : 500;
+    swappingRef.current = false;
+
+    debounceRef.current = setTimeout(() => {
+      let needsSwap = false;
+
+      if (priceMin && priceMax && Number(priceMax) < Number(priceMin)) {
+        needsSwap = true;
+        swappingRef.current = true;
+        setPriceMin(priceMax);
+        setPriceMax(priceMin);
+        toast.info("Min and Max prices were swapped automatically.");
+      }
+
+      if (dateFrom && dateTo && dateFrom > dateTo) {
+        needsSwap = true;
+        swappingRef.current = true;
+        setDateFrom(dateTo);
+        setDateTo(dateFrom);
+        toast.info("From and To dates were swapped automatically.");
+      }
+
+      if (needsSwap) return;
+
+      fetchData({
+        query: searchQuery,
+        minPrice: priceMin,
+        maxPrice: priceMax,
+        fromDate: dateFrom,
+        toDate: dateTo,
+      });
+    }, delay);
+
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+    };
+  }, [searchQuery, priceMin, priceMax, dateFrom, dateTo, fetchData]);
   const saveToHistory = (query: string) => {
     if (query.trim() && !searchHistory.includes(query.trim())) {
       const newHistory = [query.trim(), ...searchHistory].slice(0, 10);
@@ -92,56 +121,49 @@ const SEARCH = () => {
       localStorage.setItem("searchHistory", JSON.stringify(newHistory));
     }
   };
-
-  // Remove item from search history
   const removeFromHistory = (query: string) => {
     const newHistory = searchHistory.filter(item => item !== query);
     setSearchHistory(newHistory);
     localStorage.setItem("searchHistory", JSON.stringify(newHistory));
   };
-
-  // Handle search from history or suggestions
   const handleSearch = (query: string) => {
     setSearchQuery(query);
     saveToHistory(query);
     setShowSearches(false);
     setShowFilter(false);
   };
-
-  // Update search query and save to history if non-empty
   const handleInputChange = (value: string) => {
     setSearchQuery(value);
     if (value.trim()) {
       saveToHistory(value);
     }
   };
-
-  // Determine if results should be shown
   const showResults = searchQuery.length > 0 || priceMin || priceMax || dateFrom || dateTo;
-
-  // Toggle filter visibility
   const toggleFilter = () => {
     setShowFilter(!showFilter);
     setShowSearches(false);
   };
-
-  // Toggle search history visibility
   const toggleSearches = () => {
     setShowSearches(!showSearches);
     setShowFilter(false);
   };
-
-  // Clear all filter values
   const clearAllFilters = () => {
     setPriceMin("");
     setPriceMax("");
     setDateFrom("");
     setDateTo("");
   };
-
+  const refreshData = () => {
+    fetchData({
+      query: searchQuery,
+      minPrice: priceMin,
+      maxPrice: priceMax,
+      fromDate: dateFrom,
+      toDate: dateTo,
+    });
+  };
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col overflow-x-hidden">
-      {/* Search input */}
       <main className="flex-1 pb-20">
         <div className="w-full px-2 sm:px-4 flex flex-col items-center justify-start pt-20 transition-all duration-300">
           <div className={`w-full ${showResults ? 'max-w-7xl' : 'max-w-2xl'} mx-auto`}>
@@ -159,17 +181,11 @@ const SEARCH = () => {
                 }`}
               />
             </div>
-            {/* Show filters if toggled */}
             {showFilter && (
               <div className="mt-4 p-6 bg-white border-2 border-blue-500 rounded-2xl shadow-lg animate-in fade-in duration-200">
                 <div className="flex justify-between items-center mb-4">
                   <h3 className="text-lg font-semibold text-gray-800">Filters</h3>
-                  <button
-                    onClick={clearAllFilters}
-                    className="text-sm text-blue-600 hover:text-blue-800 transition-colors"
-                  >
-                    Clear All
-                  </button>
+                 
                 </div>
                 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -214,7 +230,6 @@ const SEARCH = () => {
                 </div>
               </div>
             )}
-            {/* Show options if no results */}
             {!showResults && (
               <div className="mt-6 text-center">
                 <div className="flex flex-wrap gap-2 sm:gap-4 justify-center px-2 py-2 mb-6">
@@ -242,7 +257,6 @@ const SEARCH = () => {
                     Searches
                   </button>
                 </div>
-                {/* Show recent searches if toggled and history exists */}
                 {showSearches && searchHistory.length > 0 && (
                   <div className="mb-6 p-3 sm:p-4 bg-white border-2 border-blue-500 rounded-2xl shadow-lg animate-in fade-in duration-200">
                     <h3 className="text-sm font-semibold text-gray-700 mb-3 text-left">Recent Searches</h3>
@@ -267,13 +281,11 @@ const SEARCH = () => {
                     </div>
                   </div>
                 )}
-                {/* Show message if no search history */}
                 {showSearches && searchHistory.length === 0 && (
                   <div className="mb-6 p-6 bg-white border-2 border-gray-200 rounded-2xl">
                     <p className="text-gray-500 text-sm">No search history yet</p>
                   </div>
                 )}
-                {/* Show popular searches if not showing history */}
                 {!showSearches && (
                   <>
                     <p className="text-gray-500 text-xs sm:text-sm mb-4">Popular searches:</p>
@@ -329,9 +341,7 @@ const SEARCH = () => {
 
             {properties.length > 0 ? (
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-                {properties
-                  .filter(property => property.mainImage)
-                  .map(property => (
+                {properties.map(property => (
                     <PropertyCard
                       key={property.propertyId}
                       id={property.propertyId}
@@ -350,7 +360,8 @@ const SEARCH = () => {
                       ownerProfileImage={property.ownerProfileImage}
                       ownerRating={property.ownerRating}
                       ownerUserId={property.ownerUserId}
-                      fetchProperties={fetchData}
+                      isFavorite={property.isFavourite ?? property.isFavorite}
+                      fetchProperties={refreshData}
                     />
                   ))}
               </div>

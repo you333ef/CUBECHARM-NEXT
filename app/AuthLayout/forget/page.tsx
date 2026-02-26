@@ -1,70 +1,58 @@
 "use client";
+
 import { useForm } from "react-hook-form";
 import { useRouter } from "next/navigation";
 import { useContext } from "react";
 import AuthContext from "@/app/providers/AuthContext";
 import { toast } from "sonner";
+import api from "../refresh";
+
+type ForgetForm = {
+  email: string;
+  terms: boolean;
+};
 
 const Forget = () => {
   const { baseUrl } = useContext(AuthContext)!;
-
-  const {
-    register,
-    handleSubmit,
-    formState: { errors },
-    watch,
-  } = useForm();
-
   const router = useRouter();
-  // 2
-  const onSubmit = async (data: any) => {
+
+  const { register, handleSubmit, formState: { errors } } = useForm<ForgetForm>();
+
+  const onSubmit = async (data: ForgetForm) => {
     try {
-      const res = await fetch(`${baseUrl}/Auth/forgot-password`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          email: data.email,
-        }),
+      const res = await api.post(`/Auth/forgot-password`, {
+        email: data.email,
       });
 
-      const result = await res.json();
+      const result = res.data;
 
-      if (res.ok && !result.message?.toLowerCase().includes("error")) {
-      toast.success("Check your email for reset link");
-
-       
+      if ( result?.success) {
+        toast.success("Check your email for reset link");
       } else {
-        toast.error(result.message || "Something went wrong");
+        toast.error(result?.message || "Something went wrong");
       }
-    } catch (error) {
-      toast.error("Network error, please try again");
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || "Network error, please try again");
       console.error("Error during form submission:", error);
     }
   };
 
-  const password = watch("password");
-
-  // 3
-  const NAVIGATE = () => {
+  const navigateToLogin = () => {
     router.push("/AuthLayout/Login");
   };
 
   return (
     <div className="flex justify-center items-center h-screen bg-[#FFFFFF] p-3">
       <div className="w-full max-w-md bg-white shadow-xl rounded-2xl px-6 py-6 mx-auto">
-        {/* 4 */}
         <div className="flex items-center justify-center mb-5">
           <h2 className="text-2xl font-extrabold text-[#111827] tracking-tight">
             CUBECHARM
           </h2>
         </div>
 
-        {/* 5 */}
         <div className="text-center mb-5">
           <p className="text-[#6B7280] text-sm">
-            Reset your CUBECHORM account and regain access securely
+            Reset your CUBECHARM account and regain access securely
           </p>
         </div>
 
@@ -74,11 +62,7 @@ const Forget = () => {
           <div className="flex-grow border-t border-gray-200"></div>
         </div>
 
-        {/* 6 */}
         <form className="space-y-3" onSubmit={handleSubmit(onSubmit)}>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3"></div>
-
-          {/* 7 */}
           <div>
             <input
               type="email"
@@ -88,7 +72,7 @@ const Forget = () => {
             />
             {errors.email && (
               <p className="text-gray-400 text-xs mt-1">
-                {errors.email.message as string}
+                {errors.email.message}
               </p>
             )}
           </div>
@@ -100,15 +84,13 @@ const Forget = () => {
               {...register("terms", { required: "You must agree" })}
             />
             <span className="text-[#111827]">
-              I agree the{" "}
+              I agree to the{" "}
               <a href="#" className="text-[#4B3CF5] font-medium">Terms</a> and{" "}
               <a href="#" className="text-[#4B3CF5] font-medium">Privacy</a>
             </span>
           </div>
           {errors.terms && (
-            <p className="text-gray-400 text-xs mt-1">
-              {errors.terms.message as string}
-            </p>
+            <p className="text-gray-400 text-xs mt-1">{errors.terms.message}</p>
           )}
 
           <button
@@ -119,10 +101,9 @@ const Forget = () => {
           </button>
         </form>
 
-        {/* 9 */}
         <p className="text-sm text-[#6B7280] mt-5 text-center">
           Return To Login?{" "}
-          <a href="#" className="text-[#4B3CF5] font-medium" onClick={NAVIGATE}>
+          <a href="#" className="text-[#4B3CF5] font-medium" onClick={navigateToLogin}>
             Login
           </a>
         </p>

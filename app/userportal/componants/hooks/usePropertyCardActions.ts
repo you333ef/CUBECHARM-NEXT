@@ -1,10 +1,8 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import axios from "axios";
 import { toast } from "sonner";
 import api from "@/app/AuthLayout/refresh";
 
-const BASE_URL = "http://localhost:5000";
 
 interface ActionItem {
   label: string;
@@ -18,9 +16,7 @@ interface UsePropertyCardActionsProps {
   isOwner: boolean;
   ownerName: string;
   fetchProperties?: () => void;
-  baseUrl: string;
-  accessToken: string | null;
-  router: ReturnType<typeof useRouter>;
+  baseUrl: string;  router: ReturnType<typeof useRouter>;
 }
 
 export function usePropertyCardActions({
@@ -30,45 +26,32 @@ export function usePropertyCardActions({
   ownerName,
   fetchProperties,
   baseUrl,
-  accessToken,
+  // ...existing code...
   router,
 }: UsePropertyCardActionsProps) {
-  // Modal states
   const [showModal, setShowModal] = useState(false);
   const [showReportModal, setShowReportModal] = useState(false);
 
-  // Delete states
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [itemToDelete, setItemToDelete] = useState<number | null>(null);
 
-  // Block states
   const [isBlockModalOpen, setIsBlockModalOpen] = useState(false);
   const [userToBlock, setUserToBlock] = useState<string | null>(null);
 
-  // Follow state
   const [isFollowing, setIsFollowing] = useState(false);
 
-  // Check if user is already following
   const checkFollowingStatus = async (userId: string) => {
     try {
-      const res = await axios.get(
-        `${baseUrl}/users/follows/${userId}/is-following`,
-        { headers: { Authorization: `Bearer ${accessToken}` } }
-      );
+      const res = await api.get(`/users/follows/${userId}/is-following`);
       setIsFollowing(res.data?.data || false);
     } catch {
       setIsFollowing(false);
     }
   };
 
-  // Follow user
   const handleFollow = async (userId: string) => {
     try {
-      const res = await axios.post(
-        `${baseUrl}/users/follows/${userId}`,
-        {},
-        { headers: { Authorization: `Bearer ${accessToken}` } }
-      );
+      const res = await api.post(`/users/follows/${userId}`, {});
       setIsFollowing(true);
       toast.success(res.data?.message || "Followed successfully");
     } catch {
@@ -76,13 +59,9 @@ export function usePropertyCardActions({
     }
   };
 
-  // Unfollow user
   const handleUnfollow = async (userId: string) => {
     try {
-      const res = await axios.delete(
-        `${baseUrl}/users/follows/${userId}`,
-        { headers: { Authorization: `Bearer ${accessToken}` } }
-      );
+      const res = await api.delete(`/users/follows/${userId}`);
       setIsFollowing(false);
       toast.success(res.data?.message || "Unfollowed successfully");
     } catch {
@@ -90,7 +69,6 @@ export function usePropertyCardActions({
     }
   };
 
-  // Toggle modal and check follow status when opening
   const toggleModal = async (e: React.MouseEvent) => {
     e.stopPropagation();
     if (!showModal) {
@@ -99,7 +77,6 @@ export function usePropertyCardActions({
     setShowModal(!showModal);
   };
 
-  // Submit report
   const handleSubmitReport = async ({
     reportId,
     reason,
@@ -110,11 +87,7 @@ export function usePropertyCardActions({
     description: string;
   }) => {
     try {
-      const res = await api.post(
-        `${BASE_URL}/api/report/property/${reportId}`,
-        { reason, description }
-      );
-
+      const res = await api.post(`/report/property/${reportId}`, { reason, description });
       if (res.data?.success) {
         toast.success(res.data.message || "Report submitted successfully");
       } else {
@@ -130,7 +103,6 @@ export function usePropertyCardActions({
     }
   };
 
-  // Delete modal handlers
   const openDeleteConfirm = (id: number) => {
     setItemToDelete(id);
     setIsDeleteModalOpen(true);
@@ -138,17 +110,11 @@ export function usePropertyCardActions({
 
   const confirmDelete = async (id: number) => {
     try {
-      await axios.delete(`${BASE_URL}/api/Property/${id}`, {
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-        },
-      });
-
+      await api.delete(`/property/${id}`);
       fetchProperties?.();
       toast.success("Property deleted successfully");
     } catch (error: any) {
-      const errorMessage =
-        error?.response?.data?.message || error?.message || "Error unknown";
+      const errorMessage = error?.response?.data?.message || error?.message || "Error unknown";
       toast.error(errorMessage);
     } finally {
       setItemToDelete(null);
@@ -161,7 +127,6 @@ export function usePropertyCardActions({
     setIsDeleteModalOpen(false);
   };
 
-  // Block modal handlers
   const openBlockConfirm = (userId: string) => {
     setUserToBlock(userId);
     setIsBlockModalOpen(true);
@@ -169,21 +134,11 @@ export function usePropertyCardActions({
 
   const confirmBlock = async (userId: string) => {
     try {
-      const res = await axios.post(
-        `${baseUrl}/users/blocks/${userId}`,
-        {},
-        {
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
-          },
-        }
-      );
-
+      const res = await api.post(`/users/blocks/${userId}`, {});
       toast.success(res.data?.message || "User blocked successfully");
       fetchProperties?.();
     } catch (error: any) {
-      const errorMessage =
-        error?.response?.data?.message || "Failed to block user";
+      const errorMessage = error?.response?.data?.message || "Failed to block user";
       toast.error(errorMessage);
     } finally {
       setUserToBlock(null);
@@ -196,13 +151,11 @@ export function usePropertyCardActions({
     setIsBlockModalOpen(false);
   };
 
-  // Update property
   const handleUpdate = (id: number) => {
     setShowModal(false);
     router.push(`/userportal/createdad?id=${id}`);
   };
 
-  // Actions for regular users
   const modalActions: ActionItem[] = [
     {
       label: "Report",
@@ -238,7 +191,6 @@ export function usePropertyCardActions({
     },
   ];
 
-  // Actions for property owner
   const ownerActions: ActionItem[] = [
     {
       label: "Update",
@@ -263,7 +215,6 @@ export function usePropertyCardActions({
     },
   ];
 
-  // Choose which actions to show
   const actionsToShow = isOwner ? ownerActions : modalActions;
 
   return {

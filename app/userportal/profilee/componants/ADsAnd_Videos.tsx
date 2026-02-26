@@ -4,7 +4,7 @@ import {
   MdOutlineOndemandVideo,
 } from "react-icons/md";
 import { Megaphone } from "lucide-react";
-import { FaTimes, FaEllipsisV, FaHeart } from "react-icons/fa";
+import { FaTimes, FaEllipsisV, FaHeart, FaPlay } from "react-icons/fa";
 import { useState, useEffect, useContext } from "react";
 import { Swiper, SwiperSlide } from "swiper/react";
 import { Navigation, Keyboard } from "swiper/modules";
@@ -14,6 +14,7 @@ import PropertyCard from "../../componants/shared/PropertyCard";
 import AuthContext from "@/app/providers/AuthContext";
 import axios from "axios";
 import { toast } from "sonner";
+import api from "@/app/AuthLayout/refresh";
 type ViewType = "ads" | "videos" | "properties";
 interface ADsAndVideosProps {
   isOwner?: boolean | null;
@@ -23,7 +24,6 @@ const IMAGE_BASE = "http://localhost:5000";
 
 const AdsAndVideos: React.FC<ADsAndVideosProps> = ({ isOwner: ownerFromParent = null, profileUserId }) => {
   const { baseUrl, user } = useContext(AuthContext)!;
-  const accessToken = typeof window !== "undefined" ? localStorage.getItem("accessToken") : null;
   const loggedInUserId = user?.sub;
   const resolvedIsOwner = !profileUserId || profileUserId === loggedInUserId;
 
@@ -50,15 +50,13 @@ const AdsAndVideos: React.FC<ADsAndVideosProps> = ({ isOwner: ownerFromParent = 
     setLoadingProperties(true);
 
     const url = resolvedIsOwner
-      ? `${baseUrl}/Property/my-properties`
-      : `${baseUrl}/Property/user/${profileUserId}`;
+      ? `/Property/my-properties`
+      : `/Property/user/${profileUserId}`;
 
     const headers: any = {};
-    if (accessToken) {
-      headers.Authorization = `Bearer ${accessToken}`;
-    }
+  
 
-    const response = await axios.get(url, { headers });
+    const response = await api.get(url, { headers });
 
     const items = Array.isArray(response?.data?.data?.items)
       ? response.data.data.items
@@ -87,15 +85,13 @@ const AdsAndVideos: React.FC<ADsAndVideosProps> = ({ isOwner: ownerFromParent = 
     setLoadingPosts(true);
 
     const url = resolvedIsOwner
-      ? `${baseUrl}/posts/my-posts?page=1&pageSize=10`
-      : `${baseUrl}/posts/user/${profileUserId}?page=1&pageSize=10`;
+      ? `/posts/my-posts?page=1&pageSize=10`
+      : `/posts/user/${profileUserId}?page=1&pageSize=10`;
 
     const headers: any = {};
-    if (accessToken) {
-      headers.Authorization = `Bearer ${accessToken}`;
-    }
+   
 
-    const response = await axios.get(url, { headers });
+    const response = await api.get(url, { headers });
 
     const data =
       response?.data?.data?.items ??
@@ -104,16 +100,38 @@ const AdsAndVideos: React.FC<ADsAndVideosProps> = ({ isOwner: ownerFromParent = 
       [];
 
     const items = Array.isArray(data) ? data : [];
-    const normalized = items.map((p: any) => ({
-      ...p,
-      mediaUrlFull: formatUrl(p.mediaUrl),
-      userAvatarFull: formatUrl(p.userAvatar),
-      type: "post",
-    }));
+
+    const normalized = items.map((p: any) => {
+      const videoExts = [".mp4", ".webm", ".mov", ".avi", ".mkv", ".m4v"];
+
+      const videoFile = p.mediaFiles?.find((m: any) => m.type === "Video");
+      const imageFile = p.mediaFiles?.find((m: any) => m.type === "Image");
+      const firstFile = p.mediaFiles?.[0];
+
+      const hasVideoFile =
+        !!videoFile ||
+        p.mediaType === "Video" ||
+        p.contentType === "video" ||
+        videoExts.some((ext) => (p.mediaUrl || "").toLowerCase().endsWith(ext));
+
+      // Use mediaFiles first to mediaUrl for backward compat
+      const resolvedImageUrl = imageFile?.url || (!hasVideoFile ? (firstFile?.url || p.mediaUrl) : null);
+      const resolvedVideoUrl = videoFile?.url || (hasVideoFile ? (firstFile?.url || p.mediaUrl) : null);
+
+      return {
+        ...p,
+        mediaUrlFull: formatUrl(resolvedImageUrl || resolvedVideoUrl || p.mediaUrl),
+        userAvatarFull: formatUrl(p.userAvatar),
+        type: "post",
+        isVideo: !!hasVideoFile,
+        videoUrl: resolvedVideoUrl ? formatUrl(resolvedVideoUrl) : null,
+        thumbnailUrl: resolvedImageUrl ? formatUrl(resolvedImageUrl) : null,
+      };
+    });
 
     setPosts(normalized);
   } catch (err) {
-    
+    console.error("fetchPosts error:", err);
   } finally {
     setLoadingPosts(false);
   }
@@ -132,7 +150,8 @@ useEffect(() => {
   }
  
 }, [profileUserId, resolvedIsOwner]);
-const ads = posts.filter((p) => !!p.mediaUrlFull); 
+const ads = posts.filter((p) => !!p.mediaUrlFull);
+const videoPosts = posts.filter((p) => p.isVideo);
 //  To Open Modal Slider
   const openModal = (index: number, items: any[]) => {
     setModalItems(items);
@@ -144,7 +163,7 @@ const ads = posts.filter((p) => !!p.mediaUrlFull);
  
   //  Handle Toggle Like 
  const toggleLike = async (postId: number) => {
-  if (!accessToken) return;
+ 
 
   setPosts((prev) =>
     prev.map((p) =>
@@ -171,14 +190,10 @@ const ads = posts.filter((p) => !!p.mediaUrlFull);
   );
 
   try {
-    await axios.post(
-      `${baseUrl}/posts/${postId}/like`,
+    await api.post(
+      `/posts/${postId}/like`,
       {},
-      {
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-        },
-      }
+     
     );
   } catch (err) {
     console.error("toggle like failed", err);
@@ -192,20 +207,11 @@ const ads = posts.filter((p) => !!p.mediaUrlFull);
 
 const confirmDelete = async (postId: number) => {
   try {
-    await axios.delete(
-      `${baseUrl}/posts/${postId}`,
-      {
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-        },
-      }
-    );
+    await api.delete(`/posts/${postId}`);
 
-    // remove post locally after success
     setPosts((prev) => prev.filter((p) => p.postId !== postId));
     toast.error("Post Deleted Sucess")
 
-    // close modal if deleted post is open
     if (modalItems.some((m) => m.postId === postId)) {
       setModalOpen(false);
       setModalItems([]);
@@ -256,14 +262,29 @@ const confirmDelete = async (postId: number) => {
               <div
                 key={`${item.propertyId ?? idx}-${idx}`}
                 onClick={() => openModal(idx, ads)}
-                className="cursor-pointer overflow-hidden bg-black aspect-square"
+                className="cursor-pointer overflow-hidden bg-black aspect-square relative"
               >
-                <img src={item.mediaUrlFull} className="w-full h-full object-cover hover:opacity-90 transition" />
-                <div className="p-2">
-                  {item.title && (
-                    <div className="text-white text-sm line-clamp-2">{item.title}</div>
-                  )}
-                </div>
+                {item.isVideo ? (
+                  <>
+                    {item.thumbnailUrl ? (
+                      <img src={item.thumbnailUrl} className="w-full h-full object-cover hover:opacity-90 transition" />
+                    ) : (
+                      <video
+                        src={item.videoUrl || item.mediaUrlFull}
+                        className="w-full h-full object-cover"
+                        muted
+                        preload="metadata"
+                      />
+                    )}
+                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                      <div className="bg-black/50 rounded-full w-10 h-10 flex items-center justify-center">
+                        <FaPlay className="text-white ml-0.5" size={16} />
+                      </div>
+                    </div>
+                  </>
+                ) : (
+                  <img src={item.mediaUrlFull} className="w-full h-full object-cover hover:opacity-90 transition" />
+                )}
               </div>
             ))}
             {ads.length === 0 && (
@@ -273,9 +294,33 @@ const confirmDelete = async (postId: number) => {
         )}
 
         {view === "videos" && (
-          // show a single centered message "Empty" (no duplicates, nothing fancy)
-          <div className="w-full py-20 flex items-center justify-center">
-            <div className="text-gray-500">Empty</div>
+          <div className="grid grid-cols-3 gap-[2px]">
+            {videoPosts.map((item, idx) => (
+              <div
+                key={`video-${item.postId ?? idx}-${idx}`}
+                onClick={() => openModal(idx, videoPosts)}
+                className="cursor-pointer overflow-hidden bg-black aspect-square relative"
+              >
+                {item.thumbnailUrl ? (
+                  <img src={item.thumbnailUrl} className="w-full h-full object-cover hover:opacity-90 transition" />
+                ) : (
+                  <video
+                    src={item.videoUrl || item.mediaUrlFull}
+                    className="w-full h-full object-cover"
+                    muted
+                    preload="metadata"
+                  />
+                )}
+                <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                  <div className="bg-black/50 rounded-full w-10 h-10 flex items-center justify-center">
+                    <FaPlay className="text-white ml-0.5" size={16} />
+                  </div>
+                </div>
+              </div>
+            ))}
+            {videoPosts.length === 0 && (
+              <div className="col-span-full text-center text-gray-500 py-8">No videos yet</div>
+            )}
           </div>
         )}
 
@@ -312,6 +357,7 @@ const confirmDelete = async (postId: number) => {
                       ownerProfileImage={property.ownerProfileImage}
                       ownerRating={property.ownerRating}
                       ownerUserId={property.ownerUserId}
+                      isFavorite={property.isFavourite ?? property.isFavorite}
                       fetchProperties={fetchProperties}
                     />
                   ))}
@@ -420,19 +466,23 @@ const confirmDelete = async (postId: number) => {
   <SwiperSlide key={idx} className="flex items-center justify-center">
     <div className="relative w-[90vw] h-[90vh] bg-black flex items-center justify-center">
       
-      {/* image */}
-      {item.mediaUrlFull && (
-        <img
-          src={item.mediaUrlFull}
-          alt=""
-          className="
-            object-contain
-            max-w-full
-            max-h-full
-            select-none
-          "
-          style={{ imageRendering: "auto" }}
+      {/* video or image */}
+      {item.isVideo ? (
+        <video
+          src={item.videoUrl || item.mediaUrlFull}
+          controls
+          className="object-contain max-w-full max-h-full select-none"
+          style={{ outline: "none" }}
         />
+      ) : (
+        item.mediaUrlFull && (
+          <img
+            src={item.mediaUrlFull}
+            alt=""
+            className="object-contain max-w-full max-h-full select-none"
+            style={{ imageRendering: "auto" }}
+          />
+        )
       )}
 
       {/* like overlay */}

@@ -89,19 +89,8 @@ const ViewClient: React.FC<ViewClientProps> = ({ setStateView, stateView, user }
                 {groupCreated}
               </p>
             </article>
-            <article className="group rounded-2xl bg-gradient-to-br from-white via-gray-50 to-gray-100 border border-gray-200/60 p-3 transition-all duration-300 hover:shadow-lg hover:shadow-gray-200/40 hover:border-gray-400/50">
-              <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">All Appartments</p>
-              <p className="font-semibold text-gray-800 text-sm group-hover:text-black transition-colors text-center">
-                <span className="text-gray-900 font-bold">{user.group?.students?.length ?? 0}</span> /{" "}
-                {user.group?.max_students ?? "—"}
-              </p>
-            </article>
-            <article className="group rounded-2xl bg-gradient-to-br from-white via-gray-50 to-gray-100 border border-gray-200/60 p-3 transition-all duration-300 hover:shadow-lg hover:shadow-gray-200/40 hover:border-gray-400/50">
-              <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Type Appartments</p>
-              <p className="font-semibold text-gray-800 text-sm group-hover:text-black transition-colors text-center">
-                Hotels
-              </p>
-            </article>
+
+      
           </div>
         </section>
 

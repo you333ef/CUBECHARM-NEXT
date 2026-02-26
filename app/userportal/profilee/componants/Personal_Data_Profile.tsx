@@ -10,21 +10,24 @@ import dynamic from "next/dynamic";
 import { useFollow } from "../componants/useFollow";
 import AuthContext from "@/app/providers/AuthContext";
 import { toast } from "sonner";
-import axios from "axios";
+import api from "@/app/AuthLayout/refresh";
 
 type PersonalDataProfileProps = {
   onStoryAdded?: () => void;
   onAddStory?: () => void;
   profile: ProfileInfo;
+  onFollowUpdate?: () => void;
   followers: any[];
   following: any[];
   isOwner?: boolean;
   isFollowing?: boolean | null;
+  userStories?: any[];
 };
 
 export type ProfileInfo = {
   userId: string;
   userName: string;
+
   firstName: string;
   lastName: string;
   fullName: string;
@@ -52,8 +55,10 @@ export default function PersonalDataProfile({
   profile,
   followers,
   following,
+  onFollowUpdate,
   isOwner = false,
   isFollowing,
+  userStories,
 }: PersonalDataProfileProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -71,6 +76,10 @@ export default function PersonalDataProfile({
 
   const [localFollowing, setLocalFollowing] = useState<boolean | null>(isFollowing ?? null);
 
+  const { myStories, fetchMyStories, storiesLoading } = useContext(AuthContext)!;
+
+  
+
   useEffect(() => {
     if (!resolvedIsOwner && profile?.userId) {
       let mounted = true;
@@ -86,6 +95,12 @@ export default function PersonalDataProfile({
   }, [profile?.userId, resolvedIsOwner]);
 
   useEffect(() => {
+    if (resolvedIsOwner) {
+      fetchMyStories();
+    }
+  }, [resolvedIsOwner]);
+
+  useEffect(() => {
     if (searchParams.get("openStory") === "true") {
       setShowAddModal(true);
     }
@@ -99,51 +114,40 @@ export default function PersonalDataProfile({
   const BaseUrl = "http://localhost:5000";
   const imageSrc = profile.profilePicture ? `${BaseUrl}/${profile.profilePicture}` : "/images/default-avatar.png";
 
-  const handleFollowProfile = async () => {
-    if (followLoading || !profile.userId || profile.userId === currentUserId) return;
-    try {
-      await followUser(profile.userId);
+ const handleFollowProfile = async () => {
+  if (followLoading || !profile.userId || profile.userId === currentUserId) return;
+  try {
+    await followUser(profile.userId);
+    setLocalFollowing(true);
+    await onFollowUpdate?.();
+  } catch (err: any) {
+    const msg = err?.response?.data?.errors?.[0] || err?.response?.data?.message || err?.message;
+    if (typeof msg === "string" && msg.toLowerCase().includes("already following")) {
       setLocalFollowing(true);
-    } catch (err: any) {
-      const msg = err?.response?.data?.errors?.[0] || err?.response?.data?.message || err?.message;
-      if (typeof msg === "string" && msg.toLowerCase().includes("already following")) {
-        setLocalFollowing(true);
-      } else {
-        toast.error(msg || "Follow failed");
-      }
+    } else {
+      toast.error(msg || "Follow failed");
     }
-  };
+  }
+};
 
-  const handleUnfollowProfile = async () => {
-    if (followLoading || !profile.userId || profile.userId === currentUserId) return;
-    try {
-      await unfollowUser(profile.userId);
+const handleUnfollowProfile = async () => {
+  if (followLoading || !profile.userId || profile.userId === currentUserId) return;
+  try {
+    await unfollowUser(profile.userId);
+    setLocalFollowing(false);
+    await onFollowUpdate?.();
+  } catch (err: any) {
+    const msg = err?.response?.data?.errors?.[0] || err?.response?.data?.message || err?.message;
+    if (typeof msg === "string" && msg.toLowerCase().includes("cannot unfollow yourself")) {
       setLocalFollowing(false);
-    } catch (err: any) {
-      const msg = err?.response?.data?.errors?.[0] || err?.response?.data?.message || err?.message;
-      if (typeof msg === "string" && msg.toLowerCase().includes("cannot unfollow yourself")) {
-        setLocalFollowing(false);
-      } else {
-        toast.error(msg || "Unfollow failed");
-      }
+    } else {
+      toast.error(msg || "Unfollow failed");
     }
-  };
-   const { baseUrl } = useContext(AuthContext)!;
-    const accessToken =
-      typeof window !== "undefined"
-        ? localStorage.getItem("accessToken")
-        : null;
+  }
+};
 const startConversation = async (otherUserId: string) => {
   try {
-    const response = await axios.post(
-      `${baseUrl}/messaging/conversations/start/${otherUserId}`,
-      null,
-      {
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-        },
-      }
-    );
+    const response = await api.post(`/messaging/conversations/start/${otherUserId}`, null);
 
     if (!response.data?.success) {
       throw new Error(response.data?.message || "Failed to start conversation");
@@ -168,7 +172,38 @@ const handleMessageClick = async () => {
   }
 };
 
+const handleProfileImageClick = () => {
+  if (!hasStories) return;
 
+  const convertedAlbums = activeStories.map(story => ({
+    id: story.id,
+    albumName: `Story ${new Date(story.createdDate).toLocaleDateString()}`,
+    slides: story.slides
+      .filter((slide: any) => slide.mediaUrl && slide.mediaUrl.trim() !== "")
+      .map((slide: any) => ({
+        id: slide.id,
+        slideId: slide.id,
+        mediaUrl: slide.mediaUrl,
+        caption: slide.caption
+      }))
+  })).filter(album => album.slides.length > 0);
+
+  if (convertedAlbums.length === 0) return;
+
+  window.dispatchEvent(
+    new CustomEvent("openStory", {
+      detail: {
+        albums: convertedAlbums,
+        startAlbumId: convertedAlbums[0]?.id,
+        userName: fullName || profile.userName,
+        userProfileImage: profile.profilePicture,
+      },
+    })
+  );
+};
+
+const activeStories = resolvedIsOwner ? myStories : (userStories ?? []);
+const hasStories = activeStories.length > 0;
 
   return (
     <>
@@ -249,14 +284,31 @@ const handleMessageClick = async () => {
               )}
             </div>
 
-            <Image
-              src={imageSrc}
-              alt={profile.userName ? `${profile.userName} profile picture` : "Profile Picture"}
-              width={180}
-              height={180}
-              unoptimized
-              className="rounded-3xl object-cover shadow-lg"
-            />
+            <div 
+              className={`relative ${hasStories ? 'cursor-pointer' : ''}`}
+              onClick={handleProfileImageClick}
+            >
+              <div 
+                className={`${
+                  hasStories 
+                    ? 'p-1 rounded-2xl bg-blue-500' 
+                    : ''
+                }`}
+              >
+                <Image
+                  src={imageSrc}
+                  alt={profile.userName ? `${profile.userName} profile picture` : "Profile Picture"}
+                  width={180}
+                  height={180}
+                  unoptimized
+                  className={`object-cover shadow-lg ${
+                    hasStories 
+                      ? 'rounded-2xl border-4 border-white' 
+                      : 'rounded-3xl'
+                  }`}
+                />
+              </div>
+            </div>
           </div>
         </div>
 
@@ -264,13 +316,25 @@ const handleMessageClick = async () => {
           <AddMediaModal isOpen={showAddModal} onClose={() => setShowAddModal(false)} onStoryAdded={onStoryAdded} isPost={isPostMode} />
         )}
 
-        {showFollowers && (
-          <Modal title="Followers" users={followers} onClose={() => setShowFollowers(false)} currentUserId={currentUserId} />
-        )}
+      {showFollowers && (
+  <Modal
+    title="Followers"
+    users={followers}
+    onClose={() => setShowFollowers(false)}
+    currentUserId={currentUserId}
+    onFollowUpdate={onFollowUpdate}
+  />
+)}
 
-        {showFollowing && (
-          <Modal title="Following" users={following} onClose={() => setShowFollowing(false)} currentUserId={currentUserId} />
-        )}
+{showFollowing && (
+  <Modal
+    title="Following"
+    users={following}
+    onClose={() => setShowFollowing(false)}
+    currentUserId={currentUserId}
+    onFollowUpdate={onFollowUpdate}
+  />
+)}
       </section>
     </>
   );
@@ -281,50 +345,84 @@ function Modal({
   users,
   onClose,
   currentUserId,
+  onFollowUpdate,
 }: {
   title: string;
   users: any[];
   onClose: () => void;
   currentUserId?: string;
+  onFollowUpdate?: () => void;
 }) {
   const { followUser, unfollowUser, checkIsFollowing, followLoading } = useFollow();
-  const [map, setMap] = useState<Record<string, boolean>>({});
+  const [followMap, setFollowMap] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     let mounted = true;
+
     const fetchAll = async () => {
       try {
         const results = await Promise.all(
-          users.map((u) => checkIsFollowing(u.userId).catch(() => false))
+          users.map((u) =>
+            checkIsFollowing(u.userId).catch(() => false)
+          )
         );
+
         if (!mounted) return;
-        const initial: Record<string, boolean> = {};
-        users.forEach((u, i) => { initial[u.userId] = Boolean(results[i]); });
-        setMap(initial);
+
+        const initialState = Object.fromEntries(
+          users.map((u, i) => [u.userId, Boolean(results[i])])
+        );
+
+        setFollowMap(initialState);
       } catch {
-        if (mounted) {
-          const initial: Record<string, boolean> = {};
-          users.forEach((u) => { initial[u.userId] = false; });
-          setMap(initial);
-        }
+        if (!mounted) return;
+
+        const fallbackState = Object.fromEntries(
+          users.map((u) => [u.userId, false])
+        );
+
+        setFollowMap(fallbackState);
       }
     };
+
     fetchAll();
-    return () => { mounted = false; };
-  }, [users]);
+    return () => {
+      mounted = false;
+    };
+  }, [users, checkIsFollowing]);
 
   const handleFollow = async (id: string) => {
-    if (followLoading || id === currentUserId || map[id]) return;
-    setMap((p) => ({ ...p, [id]: true }));
-    try { await followUser(id); } 
-    catch (err: any) { setMap((p) => ({ ...p, [id]: false })); toast.error("Follow failed"); }
+    if (followLoading || id === currentUserId || followMap[id]) return;
+
+    try {
+      await followUser(id);
+
+      setFollowMap((prev) => ({
+        ...prev,
+        [id]: true,
+      }));
+
+      onFollowUpdate?.(); 
+    } catch {
+      toast.error("Follow failed");
+    }
   };
 
   const handleUnfollow = async (id: string) => {
-    if (followLoading || id === currentUserId || !map[id]) return;
-    setMap((p) => ({ ...p, [id]: false }));
-    try { await unfollowUser(id); } 
-    catch (err: any) { setMap((p) => ({ ...p, [id]: true })); toast.error("Unfollow failed"); }
+    if (followLoading || id === currentUserId || !followMap[id]) return;
+
+    try {
+      await unfollowUser(id);
+
+      setFollowMap((prev) => ({
+        ...prev,
+        [id]: false,
+      }));
+
+      onFollowUpdate?.();
+    } catch {
+      toast.error("Unfollow failed");
+    }
   };
 
   return (
@@ -332,8 +430,11 @@ function Modal({
       <div className="bg-white rounded-2xl w-full max-w-md max-h-[80vh] flex flex-col">
         <div className="p-4 border-b flex justify-between items-center">
           <h2 className="text-xl font-bold">{title}</h2>
-          <button onClick={onClose}><FaTimes size={22} /></button>
+          <button onClick={onClose}>
+            <FaTimes size={22} />
+          </button>
         </div>
+
         <div className="overflow-y-auto p-4 space-y-4">
           {users.map((u) => (
             <div key={u.userId} className="flex items-center justify-between">
@@ -341,10 +442,23 @@ function Modal({
                 <Avatar src={u.profilePicture} alt={u.userName} />
                 <p className="font-medium">{u.userName}</p>
               </div>
-              {u.userId === currentUserId ? null : map[u.userId] ? (
-                <button onClick={() => handleUnfollow(u.userId)} className="px-3 py-1 text-sm bg-gray-300 rounded" disabled={followLoading}>Unfollow</button>
+
+              {u.userId === currentUserId ? null : followMap[u.userId] ? (
+                <button
+                  onClick={() => handleUnfollow(u.userId)}
+                  className="px-3 py-1 text-sm bg-gray-300 rounded"
+                  disabled={followLoading}
+                >
+                  Unfollow
+                </button>
               ) : (
-                <button onClick={() => handleFollow(u.userId)} className="px-3 py-1 text-sm bg-blue-600 text-white rounded" disabled={followLoading}>Follow</button>
+                <button
+                  onClick={() => handleFollow(u.userId)}
+                  className="px-3 py-1 text-sm bg-blue-600 text-white rounded"
+                  disabled={followLoading}
+                >
+                  Follow
+                </button>
               )}
             </div>
           ))}
