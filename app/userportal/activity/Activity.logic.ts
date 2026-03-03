@@ -15,9 +15,17 @@ export const getActivityFeed = async () => {
     const mappedPosts = response.data.data.items.map((item: any) => {
       const videos =
         item.mediaFiles?.filter((m: any) => m.type === "Video") || [];
-
       const images =
         item.mediaFiles?.filter((m: any) => m.type === "Image") || [];
+      const img360 =
+        item.mediaFiles?.filter((m: any) => m.type === "Img360" || m.is360) || [];
+
+      const firstImageUrl =
+        images.length > 0 ? images[0].url : img360.length > 0 ? img360[0].url : null;
+      const postImageUrl = firstImageUrl
+        ? `${BaseUrl}/${firstImageUrl}`
+        : "/images/default-post.png";
+      const is360 = img360.length > 0 || item.mediaFiles?.some((m: any) => m.is360) || false;
 
       return {
         id: item.postId,
@@ -27,15 +35,11 @@ export const getActivityFeed = async () => {
           ? `${BaseUrl}/${item.userAvatar}`
           : "/images/person.jpg",
 
-        postImage:
-          images.length > 0
-            ? `${BaseUrl}/${images[0].url}`
-            : "/images/default-post.png",
-
+        postImage: postImageUrl,
         videoUrl:
           videos.length > 0 ? `${BaseUrl}/${videos[0].url}` : null,
-
         hasVideo: videos.length > 0,
+        is360,
 
         caption: item.content ?? "",
         likes: item.likesCount ?? 0,
@@ -60,31 +64,35 @@ export const getPostDetails = async (
 ): Promise<any | null> => {
   try {
     const response = await api.get(`/posts/${postId}`);
-
     const data = response.data.data;
+    const mediaBase = (baseUrl || BaseUrl).replace(/\/api\/?$/, "") || BaseUrl;
 
     const videos =
       data.mediaFiles?.filter((m: any) => m.type === "Video") || [];
-
     const images =
       data.mediaFiles?.filter((m: any) => m.type === "Image") || [];
+    const img360 =
+      data.mediaFiles?.filter((m: any) => m.type === "Img360" || m.is360) || [];
+
+    const firstImageUrl =
+      images.length > 0 ? images[0].url : img360.length > 0 ? img360[0].url : null;
+    const postImageUrl = firstImageUrl
+      ? `${mediaBase}/${firstImageUrl.replace(/^\//, "")}`
+      : "/images/default-post.png";
+    const is360 = img360.length > 0 || data.mediaFiles?.some((m: any) => m.is360) || false;
 
     const mappedPostDetails = {
       id: data.postId,
       username: data.username,
- ownerUserId: data.userId, 
-      postImage:
-        images.length > 0
-          ? `${BaseUrl}/${images[0].url}`
-          : "/images/default-post.png",
-
+      ownerUserId: data.userId,
+      postImage: postImageUrl,
       videoUrl:
-        videos.length > 0 ? `${BaseUrl}/${videos[0].url}` : null,
-
+        videos.length > 0 ? `${mediaBase}/${videos[0].url.replace(/^\//, "")}` : null,
       hasVideo: videos.length > 0,
+      is360,
 
       userImage: data.userAvatar
-        ? `${BaseUrl}/${data.userAvatar}`
+        ? `${mediaBase}/${data.userAvatar.replace(/^\//, "")}`
         : "/images/person.jpg",
 
       caption: data.content ?? "",

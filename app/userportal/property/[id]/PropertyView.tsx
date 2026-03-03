@@ -5,7 +5,6 @@ import ActionIcons from "../[id]/components/property/ActionIcons";
 import SellerProfile from "../[id]/components/property/SellerProfile";
 import PropertyCard from "../../componants/shared/PropertyCard";
 
-// loading skeleton
 const LoadingSkeleton = () => (
   <div className="space-y-5 animate-pulse">
     <div className="h-10 bg-gray-200 rounded w-3/4"></div>
@@ -36,7 +35,8 @@ const PropertyView = ({
   fromReports = false,
   onAdminDelete,
   onAdminBlock,
-  onAdminDismiss, // new prop
+  onAdminDismiss,
+  baseUrl = "http://localhost:5000",
 }: {
   loading: boolean;
   property: any;
@@ -55,6 +55,7 @@ const PropertyView = ({
   onAdminDelete?: () => void;
   onAdminBlock?: () => void;
   onAdminDismiss?: () => void;
+  baseUrl?: string;
 }) => {
   const router = require('next/navigation').useRouter();
   const handleBack = () => {
@@ -82,7 +83,7 @@ const PropertyView = ({
               <MediaGallery
                 images={(property?.media || []).map((m: any) => ({
                   id: m.mediaId,
-                  url: `http://localhost:5000/${m.localPath}`,
+                  url: `${baseUrl.replace(/\/$/, "")}/${(m.localPath || "").replace(/^\//, "")}`,
                   isMain: m.isMain,
                 }))}
               />
@@ -177,7 +178,7 @@ const PropertyView = ({
             <h2 className="mt-8 text-xl font-semibold mb-4 text-gray-800">Related Ads</h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
               {relatedProperties.map((item) => {
-                const image = item.imageUrl1 ? `http://localhost:5000/${item.imageUrl1}` : "https://cdn.dubaiimmobilier.fr/wp-content/uploads/2024/06/Sky-High-Luxury.webp";
+                const image = item.imageUrl1 ? `${baseUrl.replace(/\/$/, "")}/${(item.imageUrl1 || "").replace(/^\//, "")}` : "https://cdn.dubaiimmobilier.fr/wp-content/uploads/2024/06/Sky-High-Luxury.webp";
                 return (
                   <PropertyCard
                     key={item.propertyId}

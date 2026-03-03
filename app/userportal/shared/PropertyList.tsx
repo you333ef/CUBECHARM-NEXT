@@ -58,6 +58,7 @@ const PropertyList = () => {
   const fetchAdminAlbums = async () => {
     try {
       const response = await api.get(`/admin/admin-albums`);
+     
       if (response.data?.success && Array.isArray(response.data.data)) {
         setAlbums(response.data.data);
       }
@@ -69,6 +70,10 @@ const PropertyList = () => {
     fetchProperties();
      fetchAdminAlbums();
   }, []);
+
+
+
+  
   return (
     <LayoutWrapper>
       <div className="w-full py-5 px-3 md:px-6">

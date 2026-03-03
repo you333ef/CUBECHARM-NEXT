@@ -9,12 +9,13 @@ import { useRouter } from "next/navigation";
 import AuthContext from "@/app/providers/AuthContext";
 import { getReports, MappedReport } from "../reports/services/adminReports";
 import api from "@/app/AuthLayout/refresh";
+import { getToken } from "@/app/AuthLayout/Token_Manager";
 
 const REPORTS_POSTS = () => {
   const navigate = useRouter();
   const { baseUrl } = useContext(AuthContext)!;
   const accessToken =
-    typeof window !== "undefined" ? localStorage.getItem("accessToken") : null;
+    typeof window !== "undefined" ?  getToken() : null;
 
   const [DATA_REPORTS, setDATA_REPORTS] = useState<MappedReport[]>([]);
   const [sortOrder, setSortOrder] = useState<"latest" | "oldest">("latest");
@@ -31,7 +32,6 @@ const REPORTS_POSTS = () => {
     "date",
     "status",
   ];
-  // ================= FETCH =================
   useEffect(() => {
     const fetchReports = async () => {
       try {
@@ -62,12 +62,10 @@ const REPORTS_POSTS = () => {
       fetchReports();
     }
   }, [baseUrl, accessToken, page, sortOrder]);
-  // ================= SORT =================
   const handleSort = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const value = e.target.value as "latest" | "oldest";
     setSortOrder(value);
   };
-  // ================= HELPERS =================
   const resolvePropertyId = (item: MappedReport) =>
     item.propertyId || item.referenceId || item.id;
   const patchLocalReportStatus = (reportId: string, status: string) => {
@@ -75,7 +73,6 @@ const REPORTS_POSTS = () => {
       prev.map((r) => (r.id === reportId ? { ...r, status } : r))
     );
   };
-  // ================= ACTIONS =================
   const handleBlock = async (item: MappedReport) => {
     try {
       const propertyId = resolvePropertyId(item);
@@ -148,7 +145,6 @@ const REPORTS_POSTS = () => {
       console.error(err);
     }
   };
-  // ================= CONFIRM =================
   const cancelAnyConfirm = () => {
     setConfirmBlock(false);
     setConfirmDeleteContent(false);

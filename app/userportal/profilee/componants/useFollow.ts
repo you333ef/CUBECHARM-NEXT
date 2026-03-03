@@ -5,14 +5,9 @@ import AuthContext from "@/app/providers/AuthContext";
 import api from "@/app/AuthLayout/refresh";
 
 export const useFollow = () => {
-  const { baseUrl } = useContext(AuthContext)!;
    const { refresh_data,setrerefresh_data  } = useContext(AuthContext)!;
 
-  const accessToken =
-    typeof window !== "undefined"
-      ? localStorage.getItem("accessToken")
-      : null;
-
+  
   const [followLoading, setFollowLoading] = useState(false);
 
   const checkIsFollowing = async (targetUserId: string) => {

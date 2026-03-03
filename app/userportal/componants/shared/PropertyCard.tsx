@@ -164,8 +164,8 @@ const handleFavoriteClick = async (e: React.MouseEvent, propertyId: number) => {
                   alt={ownerName}
                   width={40}
                   height={40}
+                  decoding="async"
                   className="object-cover"
-                  
                 />
               ) : (
                 ownerName?.charAt(0).toUpperCase() || "U"
@@ -193,8 +193,10 @@ const handleFavoriteClick = async (e: React.MouseEvent, propertyId: number) => {
             <img
               src={formattedImages[currentImageIndex]}
               alt={title}
-              width={600}
-              height={400}
+              width={448}
+              height={256}
+              loading="lazy"
+              decoding="async"
               className="w-full h-64 object-cover"
             />
           ) : (
@@ -279,7 +281,7 @@ const handleFavoriteClick = async (e: React.MouseEvent, propertyId: number) => {
             </div>
             <div className="flex items-center gap-1">
               <IoMdStar className="text-yellow-400" size={18} />
-              <span className="font-semibold">4.8</span>
+             
             </div>
           </div>
 
@@ -296,7 +298,7 @@ const handleFavoriteClick = async (e: React.MouseEvent, propertyId: number) => {
             </div>
           </div>
 
-          <p className="text-xs text-gray-400">3 September 16:22</p>
+        
         </div>
       </div>
 

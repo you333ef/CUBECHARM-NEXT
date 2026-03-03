@@ -301,7 +301,7 @@ const addStoryToExistingAdminAlbum = async (
   const handleUpdateSubmit = async () => {
     if (!selectedStory) return;
     try {
-      const res = await api.put(`/admin/admin-albums/${selectedStory.id}/name`, {
+      const res = await api.put(`/albums/${selectedStory.id}/name`, {
         albumName: updateAlbumName,
       });
 
@@ -338,7 +338,6 @@ const addStoryToExistingAdminAlbum = async (
     }
   };
   // ---------- Rename modal handlers ----------
-
   return (
     <div className="min-h-screen bg-white">
       <header className="border-b sticky top-0 bg-white z-30">
@@ -369,12 +368,11 @@ const addStoryToExistingAdminAlbum = async (
           </button>
         </div>
 
-        {/* removed the top circles (StoriesProfilee) as requested */}
+        
 
-        {/* New: Albums grid with delete icon on each album */}
+        {/*  Albums grid with delete icon on each album */}
         <div className="max-w-5xl mx-auto px-4">
           <h2 className="text-lg font-medium mb-4">Admin Albums</h2>
-
           {loading ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
               {Array(6)
@@ -408,17 +406,27 @@ const addStoryToExistingAdminAlbum = async (
                     }
                     className="relative bg-white border rounded-lg overflow-hidden shadow-sm cursor-pointer hover:shadow-md transition"
                   >
-                    <div className="h-40 flex items-center justify-center bg-gray-50">
-                      {cover ? (
-                        <img
-                          src={cover}
-                          alt={alb.albumName}
-                          className="object-contain max-h-full max-w-full"
-                        />
-                      ) : (
-                        <div className="text-gray-400">No cover</div>
-                      )}
-                    </div>
+                 <div className="h-40 flex items-center justify-center bg-gray-50">
+  {alb.slides?.length > 0 ? (
+    alb.slides[0].mediaType === "Video" ? (
+      <video
+        src={`${mediaBase}/${alb.slides[0].mediaUrl}`.replace(/([^:]\/)\/+/g, "$1")}
+        className="object-contain max-h-full max-w-full"
+        muted
+        playsInline
+        preload="metadata"
+      />
+    ) : (
+      <img
+        src={`${mediaBase}/${alb.slides[0].mediaUrl}`.replace(/([^:]\/)\/+/g, "$1")}
+        alt={alb.albumName}
+        className="object-contain max-h-full max-w-full"
+      />
+    )
+  ) : (
+    <div className="text-gray-400">No cover</div>
+  )}
+</div>
 
                     <div className="p-3 flex items-center justify-between gap-2">
                       <div className="flex-1">

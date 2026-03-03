@@ -34,7 +34,7 @@ export const addUserStory = async ({
       formData,
       {
         
-        timeout: 30000, // 30 second timeout
+        timeout: 30000, 
       }
     );
 
@@ -110,6 +110,7 @@ interface AddStoryToAlbumPayload {
 export const addStoryToUserAlbum = async ({
   albumId,
   files,
+  caption,
 }: AddStoryToAlbumPayload) => {
   const formData = new FormData();
 
@@ -131,8 +132,12 @@ export const addStoryToUserAlbum = async ({
       `Slides[${index}].Order`, 
       String(index + 1)
     );
+    formData.append(
+      `Slides[${index}].Caption`,
+      caption?.trim() || ""
+    );
   });
-
+  
   const res = await api.post(
     `/albums/add-story`,
     formData,

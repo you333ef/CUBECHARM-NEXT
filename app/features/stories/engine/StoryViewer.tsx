@@ -63,7 +63,19 @@ function SlideMedia({
 
   useEffect(() => {
     if (!showVideo || !videoRef.current) return;
-    isActive ? videoRef.current.play() : videoRef.current.pause();
+    const video = videoRef.current;
+    if (isActive) {
+      const playPromise = video.play();
+      if (playPromise && typeof playPromise.catch === "function") {
+        playPromise.catch((err: unknown) => {
+          const e = err as { name?: string };
+          if (e?.name === "AbortError" || e?.name === "NotAllowedError") return;
+          console.warn("Video play failed", err);
+        });
+      }
+    } else {
+      video.pause();
+    }
   }, [showVideo, isActive]);
 
   const handleReady = () => setLoaded(true);
@@ -79,7 +91,7 @@ function SlideMedia({
           src={src}
           className="max-w-full max-h-full object-contain"
           playsInline
-          muted
+          
           loop
           onCanPlay={handleReady}
           onLoadedData={handleReady}
@@ -148,6 +160,38 @@ function DeleteConfirmModal({
   );
 }
 
+type OpenStoryDetail = {
+  albums: Album[];
+  startAlbumId: number;
+  userName?: string;
+  userProfileImage?: string;
+};
+
+function applyOpenDetail(
+  detail: OpenStoryDetail,
+  setters: {
+    setAlbums: (a: Album[]) => void;
+    setCurrentAlbumIndex: (n: number) => void;
+    setCurrentSlideIndex: (n: number) => void;
+    setIsOpen: (b: boolean) => void;
+    setPendingDeleteSlideId: (n: number | null) => void;
+    setViewerUserName: (s: string | undefined) => void;
+    setViewerUserImage: (s: string | undefined) => void;
+  }
+) {
+  const { albums: evtAlbums, startAlbumId, userName: evtUserName, userProfileImage: evtUserImage } = detail;
+  if (!evtAlbums?.length) return;
+  const startIndex = evtAlbums.findIndex((a: Album) => a.id === startAlbumId);
+  setters.setAlbums(evtAlbums);
+  setters.setCurrentAlbumIndex(startIndex >= 0 ? startIndex : 0);
+  setters.setCurrentSlideIndex(0);
+  setters.setIsOpen(true);
+  setters.setPendingDeleteSlideId(null);
+  if (evtUserName) setters.setViewerUserName(evtUserName);
+  if (evtUserImage) setters.setViewerUserImage(evtUserImage);
+  document.body.style.overflow = "hidden";
+}
+
 export default function StoryViewer({
   mode = "viewer",
   isOwner = false,
@@ -156,6 +200,7 @@ export default function StoryViewer({
   onStoriesRefresh,
   userName,
   userProfileImage,
+  initialOpenDetail,
 }: {
   mode?: ViewerMode;
   isOwner?: boolean;
@@ -164,6 +209,8 @@ export default function StoryViewer({
   onStoriesRefresh?: () => void;
   userName?: string;
   userProfileImage?: string;
+  /** When viewer is mounted after openStory event, pass the event detail so it opens immediately without waiting for a second event */
+  initialOpenDetail?: OpenStoryDetail | null;
 }) {
   const { baseUrl, user, fetchMyStories } =
     useContext(AuthContext) || { baseUrl: "", user: null, fetchMyStories: null };
@@ -184,20 +231,16 @@ export default function StoryViewer({
   const currentSlide = validSlides[currentSlideIndex];
 
   const handleOpenStory = useCallback((e: Event) => {
-    const { albums: evtAlbums, startAlbumId, userName: evtUserName, userProfileImage: evtUserImage } =
-      (e as CustomEvent).detail;
-    if (!evtAlbums?.length) return;
-
-    const startIndex = evtAlbums.findIndex((a: Album) => a.id === startAlbumId);
-
-    setAlbums(evtAlbums);
-    setCurrentAlbumIndex(startIndex >= 0 ? startIndex : 0);
-    setCurrentSlideIndex(0);
-    setIsOpen(true);
-    setPendingDeleteSlideId(null);
-    if (evtUserName) setViewerUserName(evtUserName);
-    if (evtUserImage) setViewerUserImage(evtUserImage);
-    document.body.style.overflow = "hidden";
+    const detail = (e as CustomEvent).detail as OpenStoryDetail;
+    applyOpenDetail(detail, {
+      setAlbums,
+      setCurrentAlbumIndex,
+      setCurrentSlideIndex,
+      setIsOpen,
+      setPendingDeleteSlideId,
+      setViewerUserName,
+      setViewerUserImage,
+    });
     setTimeout(() => swiperRef.current?.slideTo(0), 0);
   }, []);
 
@@ -209,6 +252,22 @@ export default function StoryViewer({
     setMenuOpenId(null);
     setDeletingSlideId(null);
     document.body.style.overflow = "unset";
+  }, []);
+
+  useEffect(() => {
+    if (initialOpenDetail?.albums?.length) {
+      applyOpenDetail(initialOpenDetail, {
+        setAlbums,
+        setCurrentAlbumIndex,
+        setCurrentSlideIndex,
+        setIsOpen,
+        setPendingDeleteSlideId,
+        setViewerUserName,
+        setViewerUserImage,
+      });
+      setTimeout(() => swiperRef.current?.slideTo(0), 0);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -243,6 +302,14 @@ export default function StoryViewer({
 
         if (updatedAlbums.length === 0) {
           closeViewer();
+           if (onSlideDeleted && currentAlbum) {
+    onSlideDeleted(slideId, currentAlbum.id);
+  }
+
+  onStoriesRefresh?.();   
+  fetchMyStories?.();     
+
+  return;
           return;
         }
 

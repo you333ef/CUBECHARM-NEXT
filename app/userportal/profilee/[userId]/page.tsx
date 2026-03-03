@@ -6,15 +6,12 @@ import { useCallback, useContext, useEffect, useState } from "react";
 import { toast } from "sonner";
 import axios from "axios";
 import { useParams } from "next/navigation";
-
 import AuthContext from "@/app/providers/AuthContext";
 import api from "@/app/AuthLayout/refresh";
-
 const StoryViewer = dynamic(
   () => import("@/app/features/stories/engine/StoryViewer"),
   { ssr: false }
 );
-
 const StoriesProfilee = dynamic(
   () => import("@/app/features/stories/engine/StoriesProfilee"),
   { ssr: false }
@@ -116,7 +113,6 @@ const ProfilePage = () => {
       }
     } catch {}
   };
-
   const fetchAlbums = async () => {
     if (!loggedInUserId) return;
     try {
@@ -135,12 +131,10 @@ const ProfilePage = () => {
       setAlbumsLoading(false);
     }
   };
-
   const handleStoryAdded = async () => {
     if (isOwner) await fetchMyStories();
     await fetchAlbums();
   };
-
   const handleSlideDeleted = useCallback((slideId: number, albumId: number) => {
     setAlbums((prev) =>
       prev
@@ -175,8 +169,8 @@ const ProfilePage = () => {
 
   return (
     <>
-      <section aria-label="User profile" className="p-4 max-w-screen-xl mx-auto">
-        <div>
+      <section aria-label="User profile" className="p-4 max-w-screen-xl mx-auto min-h-screen flex flex-col pb-[80px]">
+        <div className="flex-1 flex flex-col">
           <Personal_Data_Profile
             profile={{
               ...profileInfo,

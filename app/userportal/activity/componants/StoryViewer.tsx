@@ -74,7 +74,7 @@ function SlideMedia({
           src={src}
           className="max-w-full max-h-full object-contain"
           playsInline
-          muted
+          autoPlay
           loop
           onCanPlay={handleReady}
           onLoadedData={handleReady}
@@ -355,10 +355,13 @@ export default function StoryViewer({ onStoryDeleted }: { onStoryDeleted?: () =>
 
   {currentSlide?.caption && (
     <div
-      className="absolute bottom-4 left-6 z-50"
+      className="absolute left-1/2 bottom-10 transform -translate-x-1/2 z-50 w-full flex justify-center pointer-events-none"
       role="status"
     >
-      <span className="bg-gray-700 bg-opacity-80 px-6 py-4 rounded-xl text-white font-bold text-xl shadow-md">
+      <span
+        className="bg-gray-800 bg-opacity-95 px-6 py-3 rounded-2xl text-white font-normal text-base shadow-lg max-w-xl w-auto text-center pointer-events-auto"
+        style={{backdropFilter: 'blur(6px)', fontWeight: 400, opacity: 0.92}}
+      >
         {currentSlide.caption}
       </span>
     </div>

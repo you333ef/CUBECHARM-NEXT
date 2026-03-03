@@ -1,6 +1,5 @@
 "use client";
 
-import React from "react";
 import { useForm } from "react-hook-form";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useContext } from "react";
@@ -14,7 +13,7 @@ type FormData = {
   confirmNewPassword: string;
 };
 
-const ResetPasswordPage = () => {
+export default function ResetPasswordForm() {
   const { baseUrl } = useContext(AuthContext)!;
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -41,46 +40,44 @@ const ResetPasswordPage = () => {
     );
   }
 
- const onSubmit = async (data: FormData) => {
-  try {
-    const response = await api.post("/Auth/reset-password", {
-      token,
-      email,
-      newPassword: data.newPassword,
-      confirmNewPassword: data.confirmNewPassword,
-    });
+  const onSubmit = async (data: FormData) => {
+    try {
+      const response = await api.post("/Auth/reset-password", {
+        token,
+        email,
+        newPassword: data.newPassword,
+        confirmNewPassword: data.confirmNewPassword,
+      });
 
-    const result = response.data;
+      const result = response.data;
 
-    if (result.success) {
-      toast.success("Password reset successfully");
-      router.push("/AuthLayout/Login");
-    } else {
-      if (result.errors && Array.isArray(result.errors)) {
-        result.errors.forEach((err: string) => toast.error(err));
-      } else if (result.message) {
-        toast.error(result.message);
+      if (result.success) {
+        toast.success("Password reset successfully");
+        router.push("/AuthLayout/Login");
       } else {
-        toast.error("Reset password failed");
+        if (result.errors && Array.isArray(result.errors)) {
+          result.errors.forEach((err: string) => toast.error(err));
+        } else if (result.message) {
+          toast.error(result.message);
+        } else {
+          toast.error("Reset password failed");
+        }
       }
+    } catch (error: any) {
+      if (axios.isAxiosError(error)) {
+        const msg =
+          error.response?.data?.message ||
+          (error.response?.data?.errors && error.response.data.errors[0]) ||
+          "Network error, please try again";
+        toast.error(msg);
+      } else if (error instanceof Error) {
+        toast.error(error.message);
+      } else {
+        toast.error("Unexpected error occurred");
+      }
+      console.error("Reset password error:", error);
     }
-  } catch (error: any) {
-    if (axios.isAxiosError(error)) {
-      const msg =
-        error.response?.data?.message ||
-        (error.response?.data?.errors && error.response.data.errors[0]) ||
-        "Network error, please try again";
-      toast.error(msg);
-    } else if (error instanceof Error) {
-      toast.error(error.message);
-    } else {
-      toast.error("Unexpected error occurred");
-    }
-    console.error("Reset password error:", error);
-  }
-};
-
-
+  };
 
   return (
     <div className="flex justify-center items-center h-screen bg-[#FFFFFF] p-3">
@@ -104,7 +101,6 @@ const ResetPasswordPage = () => {
         </div>
 
         <form className="space-y-3" onSubmit={handleSubmit(onSubmit)}>
-          {/* Email read-only */}
           <div>
             <input
               type="email"
@@ -114,7 +110,6 @@ const ResetPasswordPage = () => {
             />
           </div>
 
-          {/* New Password */}
           <div>
             <input
               type="password"
@@ -130,7 +125,6 @@ const ResetPasswordPage = () => {
             )}
           </div>
 
-          {/* Confirm Password */}
           <div>
             <input
               type="password"
@@ -157,6 +151,4 @@ const ResetPasswordPage = () => {
       </div>
     </div>
   );
-};
-
-export default ResetPasswordPage;
+}

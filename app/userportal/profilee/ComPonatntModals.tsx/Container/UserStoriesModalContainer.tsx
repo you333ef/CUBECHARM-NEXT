@@ -129,7 +129,7 @@ export default function UserStoriesModalContainer({
   if (!openType) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/70 flex justify-center items-center">
+    <div className="fixed inset-0 z-[9999] bg-black/70 flex justify-center items-center">
       <div className={`bg-white p-5 rounded-2xl w-[400px] space-y-3 relative ${isSubmitting ? 'pointer-events-none' : ''}`}>
         {isSubmitting && (
           <div className="absolute inset-0 bg-white/80 rounded-2xl flex items-center justify-center z-10">

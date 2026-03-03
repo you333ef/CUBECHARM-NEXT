@@ -60,10 +60,10 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
         />
         {/* 6 */}
         <main className="flex-1 p-6 bg-gray-50 overflow-y-auto">
-           {/* // <ProtectedRootAdmin> */}
+           <ProtectedRootAdmin>
               
                {children}
-               {/* //</ProtectedRootAdmin> */}
+              </ProtectedRootAdmin>
          
         </main>
       </div>

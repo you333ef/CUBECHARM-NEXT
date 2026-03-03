@@ -263,6 +263,8 @@ const PropertyPage = () => {
     setReportPostId(null);
   };
 
+  const mediaBaseUrl = auth?.baseUrl?.replace(/\/api\/?$/, "") ?? "http://localhost:5000";
+
   return (
     <div className="w-full bg-gray-50">
             <PropertyView
@@ -280,6 +282,7 @@ const PropertyPage = () => {
         propertyId={id}
         adminMode={adminMode}
         fromReports={fromReports}
+        baseUrl={mediaBaseUrl}
         onAdminDelete={adminMode ? () => openConfirm({ id, username: property?.owner?.name }, "delete") : undefined}
         onAdminBlock={adminMode ? () => openConfirm({ ownerUserId: property?.ownerId, username: property?.owner?.name }, "block") : undefined}
         onAdminDismiss={adminMode && fromReports ? handleDismiss : undefined}

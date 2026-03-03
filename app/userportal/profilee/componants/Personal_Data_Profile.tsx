@@ -23,7 +23,6 @@ type PersonalDataProfileProps = {
   isFollowing?: boolean | null;
   userStories?: any[];
 };
-
 export type ProfileInfo = {
   userId: string;
   userName: string;
@@ -36,19 +35,18 @@ export type ProfileInfo = {
   followersCount: number;
   followingCount: number;
 };
-
 const AddMediaModal = dynamic(() => import("./AddMediaModal"), { ssr: false });
-
 const Avatar = ({ src, alt }: { src?: string; alt: string }) => (
-  <Image
-    src={src || "/images/default-avatar.png"}
+  <img
+    src={src ? `http://localhost:5000/${src}` : "/images/default-avatar.png"}
     alt={alt}
     width={48}
     height={48}
+    loading="lazy"
+    decoding="async"
     className="rounded-full object-cover"
   />
 );
-
 export default function PersonalDataProfile({
   onStoryAdded,
   onAddStory,
@@ -66,20 +64,12 @@ export default function PersonalDataProfile({
   const auth = useContext(AuthContext)!;
   const currentUserId = auth?.user?.sub;
   const resolvedIsOwner = isOwner || currentUserId === profile?.userId;
- 
-
   const [showAddModal, setShowAddModal] = useState(false);
   const [showFollowers, setShowFollowers] = useState(false);
   const [showFollowing, setShowFollowing] = useState(false);
-
   const { followUser, unfollowUser, followLoading, checkIsFollowing } = useFollow();
-
   const [localFollowing, setLocalFollowing] = useState<boolean | null>(isFollowing ?? null);
-
   const { myStories, fetchMyStories, storiesLoading } = useContext(AuthContext)!;
-
-  
-
   useEffect(() => {
     if (!resolvedIsOwner && profile?.userId) {
       let mounted = true;
@@ -109,11 +99,9 @@ export default function PersonalDataProfile({
   if (!profile) {
     return <div className="p-10 text-center text-gray-500">Loading profile...</div>;
   }
-
   const fullName = `${profile.firstName || ""} ${profile.lastName || ""}`.trim();
   const BaseUrl = "http://localhost:5000";
   const imageSrc = profile.profilePicture ? `${BaseUrl}/${profile.profilePicture}` : "/images/default-avatar.png";
-
  const handleFollowProfile = async () => {
   if (followLoading || !profile.userId || profile.userId === currentUserId) return;
   try {
@@ -148,11 +136,9 @@ const handleUnfollowProfile = async () => {
 const startConversation = async (otherUserId: string) => {
   try {
     const response = await api.post(`/messaging/conversations/start/${otherUserId}`, null);
-
     if (!response.data?.success) {
       throw new Error(response.data?.message || "Failed to start conversation");
     }
-
     return response.data.data;
   } catch (error: any) {
     throw error;
@@ -207,7 +193,7 @@ const hasStories = activeStories.length > 0;
 
   return (
     <>
-      <section className="w-full px-4 mt-6 md:px-0">
+      <section className="w-full px-4 mt-10 md:px-0">
         <div className="max-w-3xl mx-auto">
           <div className="flex items-center justify-between mb-6">
             <button
@@ -251,16 +237,16 @@ const hasStories = activeStories.length > 0;
 
               {resolvedIsOwner ? (
                 <div className="flex gap-3 mt-6 justify-center md:justify-start">
-                  <Button
-                    name="Account Info"
-                    onClick={() => router.push("/userportal/Settings/profilesettings/profile_info")}
-                    className="bg-blue-600 text-white px-6 py-2 rounded-lg"
-                  />
-                  <Button
-                    name="Update Profile"
-                    onClick={() => router.push("/userportal/Settings/profilesettings/update")}
-                    className="bg-gray-300 px-6 py-2 rounded-lg"
-                  />
+                 <Button
+  name="Account Info"
+  onClick={() => router.push("/userportal/Settings/profilesettings/profile_info")}
+  className="bg-blue-600 text-white px-4 py-2 text-sm rounded-lg whitespace-nowrap"
+/>
+<Button
+  name="Update Profile"
+  onClick={() => router.push("/userportal/Settings/profilesettings/update")}
+  className="bg-gray-300 px-4 py-2 text-sm rounded-lg whitespace-nowrap"
+/>
                 </div>
               ) : (
                 <div className="flex gap-3 mt-6 justify-center md:justify-start">
@@ -284,31 +270,34 @@ const hasStories = activeStories.length > 0;
               )}
             </div>
 
-            <div 
-              className={`relative ${hasStories ? 'cursor-pointer' : ''}`}
-              onClick={handleProfileImageClick}
-            >
-              <div 
-                className={`${
-                  hasStories 
-                    ? 'p-1 rounded-2xl bg-blue-500' 
-                    : ''
-                }`}
-              >
-                <Image
-                  src={imageSrc}
-                  alt={profile.userName ? `${profile.userName} profile picture` : "Profile Picture"}
-                  width={180}
-                  height={180}
-                  unoptimized
-                  className={`object-cover shadow-lg ${
-                    hasStories 
-                      ? 'rounded-2xl border-4 border-white' 
-                      : 'rounded-3xl'
-                  }`}
-                />
-              </div>
-            </div>
+         <div 
+  className={`relative ${hasStories ? "cursor-pointer" : ""}`}
+  onClick={handleProfileImageClick}
+>
+  <div
+    className={`${
+      hasStories
+        ? "p-1 rounded-2xl bg-blue-500"
+        : ""
+    }`}
+  >
+    <div className="relative w-[180px] h-[180px] flex-shrink-0">
+      <Image
+        src={imageSrc}
+        alt={profile.userName ? `${profile.userName} profile picture` : "Profile Picture"}
+        fill
+        sizes="180px"
+        unoptimized
+        priority
+        className={`object-cover shadow-lg ${
+          hasStories
+            ? "rounded-2xl border-4 border-white"
+            : "rounded-3xl"
+        }`}
+      />
+    </div>
+  </div>
+</div>
           </div>
         </div>
 
@@ -424,7 +413,6 @@ function Modal({
       toast.error("Unfollow failed");
     }
   };
-
   return (
     <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-2xl w-full max-w-md max-h-[80vh] flex flex-col">
@@ -434,34 +422,44 @@ function Modal({
             <FaTimes size={22} />
           </button>
         </div>
-
         <div className="overflow-y-auto p-4 space-y-4">
-          {users.map((u) => (
-            <div key={u.userId} className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <Avatar src={u.profilePicture} alt={u.userName} />
-                <p className="font-medium">{u.userName}</p>
-              </div>
-
-              {u.userId === currentUserId ? null : followMap[u.userId] ? (
-                <button
-                  onClick={() => handleUnfollow(u.userId)}
-                  className="px-3 py-1 text-sm bg-gray-300 rounded"
-                  disabled={followLoading}
-                >
-                  Unfollow
-                </button>
-              ) : (
-                <button
-                  onClick={() => handleFollow(u.userId)}
-                  className="px-3 py-1 text-sm bg-blue-600 text-white rounded"
-                  disabled={followLoading}
-                >
-                  Follow
-                </button>
-              )}
-            </div>
-          ))}
+         {users.map((u) => (
+  <div key={u.userId} className="flex items-center justify-between">
+    <div className="flex items-center gap-3">
+      <div className="relative w-[48px] h-[48px] flex-shrink-0">
+        <img
+          src={
+            u.profileImageUrl
+              ? `http://localhost:5000/${u.profileImageUrl}`
+              : "/images/default-avatar.png"
+          }
+          alt={u.userName}
+          className="w-full h-full  rounded-lg  object-cover"
+          loading="lazy"
+          decoding="async"
+        />
+      </div>
+      <p className="font-medium">{u.userName}</p>
+    </div>
+    {u.userId === currentUserId ? null : followMap[u.userId] ? (
+      <button
+        onClick={() => handleUnfollow(u.userId)}
+        className="px-3 py-1 text-sm bg-gray-300 rounded"
+        disabled={followLoading}
+      >
+        Unfollow
+      </button>
+    ) : (
+      <button
+        onClick={() => handleFollow(u.userId)}
+        className="px-3 py-1 text-sm bg-blue-600 text-white rounded"
+        disabled={followLoading}
+      >
+        Follow
+      </button>
+    )}
+  </div>
+))}
         </div>
       </div>
     </div>

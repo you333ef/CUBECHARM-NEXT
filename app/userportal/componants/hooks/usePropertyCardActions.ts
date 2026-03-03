@@ -3,7 +3,6 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import api from "@/app/AuthLayout/refresh";
 
-
 interface ActionItem {
   label: string;
   onClick: (id: number) => void;
@@ -16,7 +15,8 @@ interface UsePropertyCardActionsProps {
   isOwner: boolean;
   ownerName: string;
   fetchProperties?: () => void;
-  baseUrl: string;  router: ReturnType<typeof useRouter>;
+  baseUrl: string; 
+  router: ReturnType<typeof useRouter>;
 }
 
 export function usePropertyCardActions({
@@ -26,20 +26,24 @@ export function usePropertyCardActions({
   ownerName,
   fetchProperties,
   baseUrl,
-  // ...existing code...
   router,
 }: UsePropertyCardActionsProps) {
   const [showModal, setShowModal] = useState(false);
   const [showReportModal, setShowReportModal] = useState(false);
-
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [itemToDelete, setItemToDelete] = useState<number | null>(null);
-
   const [isBlockModalOpen, setIsBlockModalOpen] = useState(false);
   const [userToBlock, setUserToBlock] = useState<string | null>(null);
-
   const [isFollowing, setIsFollowing] = useState(false);
 
+ const copyToClipboard = (propertyId: any) => {
+  const link = `http://localhost:3000/userportal/property/${propertyId}`; 
+  navigator.clipboard.writeText(link).then(() => {
+    toast.success("Link copied successfully!");
+  }).catch(err => {
+    toast.error("Failed to copy link.");
+  });
+};
   const checkFollowingStatus = async (userId: string) => {
     try {
       const res = await api.get(`/users/follows/${userId}/is-following`);
@@ -187,34 +191,35 @@ export function usePropertyCardActions({
       label: "Copy Link",
       onClick: () => {
         setShowModal(false);
+        copyToClipboard(`${propertyId}`);
       },
     },
   ];
 
-  const ownerActions: ActionItem[] = [
-    {
-      label: "Update",
-      onClick: (id) => {
-        setShowModal(false);
-        handleUpdate(id);
-      },
+ const ownerActions: ActionItem[] = [
+  {
+    label: "Update",
+    onClick: (id) => {
+      setShowModal(false);
+      handleUpdate(id);
     },
-    {
-      label: "Delete",
-      onClick: (id) => {
-        setShowModal(false);
-        openDeleteConfirm(id);
-      },
-      danger: true,
+  },
+  {
+    label: "Delete",
+    onClick: (id) => {
+      setShowModal(false);
+      openDeleteConfirm(id);
     },
-    {
-      label: "Share",
-      onClick: () => {
-        setShowModal(false);
-      },
+    danger: true,
+  },
+  {
+    label: "Copy Link", 
+    onClick: () => {
+      setShowModal(false);
+      copyToClipboard(`${propertyId}`);
     },
-  ];
-
+  },
+];
   const actionsToShow = isOwner ? ownerActions : modalActions;
 
   return {

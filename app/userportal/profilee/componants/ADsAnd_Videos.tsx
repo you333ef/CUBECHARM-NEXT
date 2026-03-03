@@ -4,43 +4,44 @@ import {
   MdOutlineOndemandVideo,
 } from "react-icons/md";
 import { Megaphone } from "lucide-react";
-import { FaTimes, FaEllipsisV, FaHeart, FaPlay } from "react-icons/fa";
-import { useState, useEffect, useContext } from "react";
-import { Swiper, SwiperSlide } from "swiper/react";
-import { Navigation, Keyboard } from "swiper/modules";
-import "swiper/css";
-import "swiper/css/navigation";
+import { useState, useEffect, useContext, useCallback } from "react";
+import dynamic from "next/dynamic";
 import PropertyCard from "../../componants/shared/PropertyCard";
+import PostCard from "../../activity/componants/PostCard";
+import PostOptionDialog from "../../activity/componants/PostOptionDialog";
+import ReportModal from "../../componants/shared/ReportModal";
+import HeadlessDemo from "../../../adminPortl/sharedAdmin/DELETE_CONFIRM";
+import { getPostDetails, reportPost, blockUser } from "../../activity/Activity.logic";
 import AuthContext from "@/app/providers/AuthContext";
-import axios from "axios";
 import { toast } from "sonner";
 import api from "@/app/AuthLayout/refresh";
+const PostModal = dynamic(() => import("../../activity/componants/PostModal"), { ssr: false });
 type ViewType = "ads" | "videos" | "properties";
 interface ADsAndVideosProps {
   isOwner?: boolean | null;
   profileUserId?: string | undefined;
 }
-const IMAGE_BASE = "http://localhost:5000";
-
 const AdsAndVideos: React.FC<ADsAndVideosProps> = ({ isOwner: ownerFromParent = null, profileUserId }) => {
   const { baseUrl, user } = useContext(AuthContext)!;
   const loggedInUserId = user?.sub;
   const resolvedIsOwner = !profileUserId || profileUserId === loggedInUserId;
-
+  const imageBase = baseUrl?.replace(/\/api\/?$/, "") ?? "http://localhost:5000";
   const [view, setView] = useState<ViewType>("ads");
-  const [modalOpen, setModalOpen] = useState(false);
-  const [startIndex, setStartIndex] = useState(0);
   const [properties, setProperties] = useState<any[]>([]);
   const [loadingProperties, setLoadingProperties] = useState(false);
   const [posts, setPosts] = useState<any[]>([]);
   const [loadingPosts, setLoadingPosts] = useState(false);
-  const [menuOpenId, setMenuOpenId] = useState<number | null>(null);
   const [deletingId, setDeletingId] = useState<number | null>(null);
-  // (can be posts or properties), used by Swiper
-  const [modalItems, setModalItems] = useState<any[]>([]);
-
+  const [selectedPostId, setSelectedPostId] = useState<number | null>(null);
+  const [postDetails, setPostDetails] = useState<any | null>(null);
+  const [postDetailsCache, setPostDetailsCache] = useState<Record<number, any>>({});
+  const [optionsPost, setOptionsPost] = useState<any | null>(null);
+  const [reportPostId, setReportPostId] = useState<number | null>(null);
+  const [blockTargetUser, setBlockTargetUser] = useState<{ userId: string; username: string } | null>(null);
   const formatUrl = (url: string | null) => {
-    return `${IMAGE_BASE}/${url}`;
+    if (!url) return "";
+    const path = url.startsWith("http") ? url : `${imageBase}/${url.replace(/^\//, "")}`;
+    return path;
   };
 
  
@@ -106,6 +107,7 @@ const AdsAndVideos: React.FC<ADsAndVideosProps> = ({ isOwner: ownerFromParent = 
 
       const videoFile = p.mediaFiles?.find((m: any) => m.type === "Video");
       const imageFile = p.mediaFiles?.find((m: any) => m.type === "Image");
+      const img360File = p.mediaFiles?.find((m: any) => m.type === "Img360" || m.is360);
       const firstFile = p.mediaFiles?.[0];
 
       const hasVideoFile =
@@ -114,18 +116,23 @@ const AdsAndVideos: React.FC<ADsAndVideosProps> = ({ isOwner: ownerFromParent = 
         p.contentType === "video" ||
         videoExts.some((ext) => (p.mediaUrl || "").toLowerCase().endsWith(ext));
 
-      // Use mediaFiles first to mediaUrl for backward compat
       const resolvedImageUrl = imageFile?.url || (!hasVideoFile ? (firstFile?.url || p.mediaUrl) : null);
       const resolvedVideoUrl = videoFile?.url || (hasVideoFile ? (firstFile?.url || p.mediaUrl) : null);
+      const resolved360Url = img360File?.url || null;
+      const is360 = !!resolved360Url || p.mediaFiles?.some((m: any) => m.is360);
+
+      const mediaUrlForDisplay =
+        resolvedImageUrl || resolved360Url || resolvedVideoUrl || firstFile?.url || p.mediaUrl;
 
       return {
         ...p,
-        mediaUrlFull: formatUrl(resolvedImageUrl || resolvedVideoUrl || p.mediaUrl),
+        mediaUrlFull: formatUrl(mediaUrlForDisplay || p.mediaUrl),
         userAvatarFull: formatUrl(p.userAvatar),
         type: "post",
         isVideo: !!hasVideoFile,
+        is360,
         videoUrl: resolvedVideoUrl ? formatUrl(resolvedVideoUrl) : null,
-        thumbnailUrl: resolvedImageUrl ? formatUrl(resolvedImageUrl) : null,
+        thumbnailUrl: resolvedImageUrl ? formatUrl(resolvedImageUrl) : resolved360Url ? formatUrl(resolved360Url) : null,
       };
     });
 
@@ -152,32 +159,53 @@ useEffect(() => {
 }, [profileUserId, resolvedIsOwner]);
 const ads = posts.filter((p) => !!p.mediaUrlFull);
 const videoPosts = posts.filter((p) => p.isVideo);
-//  To Open Modal Slider
-  const openModal = (index: number, items: any[]) => {
-    setModalItems(items);
-    setStartIndex(index);
-    setModalOpen(true);
-    setMenuOpenId(null);
-    setDeletingId(null);
-  };
- 
-  //  Handle Toggle Like 
+
+const toPostCardShape = (p: any) => ({
+  id: p.postId,
+  ownerUserId: p.userId,
+  userId: p.userId,
+  userImage: p.userAvatarFull || formatUrl(p.userAvatar),
+  username: p.username,
+  timestamp: p.createdDate || "",
+  postImage: p.mediaUrlFull,
+  caption: p.content ?? "",
+  hasVideo: p.isVideo,
+  videoUrl: p.videoUrl || null,
+  likes: p.likesCount ?? 0,
+  isLiked: p.isLiked ?? false,
+  is360: p.is360,
+});
+
+const openPostModal = useCallback(
+  async (postId: number) => {
+    setSelectedPostId(postId);
+    setPostDetails(null);
+
+    const cached = postDetailsCache[postId];
+    if (cached) {
+      setPostDetails(cached);
+      return;
+    }
+
+    try {
+      const details = await getPostDetails(postId, imageBase);
+      if (details) {
+        const normalized = {
+          ...details,
+          likesCount: details.likes ?? details.likesCount ?? 0,
+        };
+        setPostDetails(normalized);
+        setPostDetailsCache((prev) => ({ ...prev, [postId]: normalized }));
+      }
+    } catch {
+      toast.error("Failed to load post");
+      setSelectedPostId(null);
+    }
+  },
+  [imageBase, postDetailsCache]
+);
  const toggleLike = async (postId: number) => {
- 
-
   setPosts((prev) =>
-    prev.map((p) =>
-      p.postId === postId
-        ? {
-            ...p,
-            isLiked: !p.isLiked,
-            likesCount: (p.likesCount ?? 0) + (p.isLiked ? -1 : 1),
-          }
-        : p
-    )
-  );
-
-  setModalItems((prev) =>
     prev.map((p) =>
       p.postId === postId
         ? {
@@ -201,35 +229,26 @@ const videoPosts = posts.filter((p) => p.isVideo);
     toggleLike(postId);
   }
 };
-
-
-// Confirm Dlete Post 
-
-const confirmDelete = async (postId: number) => {
+const confirmDelete = useCallback(async (postId: number) => {
   try {
     await api.delete(`/posts/${postId}`);
-
     setPosts((prev) => prev.filter((p) => p.postId !== postId));
-    toast.error("Post Deleted Sucess")
-
-    if (modalItems.some((m) => m.postId === postId)) {
-      setModalOpen(false);
-      setModalItems([]);
+    if (selectedPostId === postId) {
+      setPostDetails(null);
+      setSelectedPostId(null);
     }
-
+    toast.success("Post deleted");
   } catch (error) {
     console.error("Delete failed:", error);
+    toast.error("Failed to delete post");
   } finally {
     setDeletingId(null);
-    setMenuOpenId(null);
   }
-};
-
-
+}, [selectedPostId]);
   return (
-    <section className="my-10 py-8">
+    <section className="my-2 py-2">
       <div className="max-w-5xl mx-auto px-4">
-        <div className="flex justify-center gap-20 mb-8">
+        <div className="flex justify-center gap-4 sm:gap-6 mb-6">
           <button
             onClick={() => setView("ads")}
             className={`p-3 ${view === "ads" ? "text-black border-b-2 border-black" : "text-gray-500"}`}
@@ -257,73 +276,179 @@ const confirmDelete = async (postId: number) => {
         </div>
 
         {view === "ads" && (
-          <div className="grid grid-cols-3 gap-[2px]">
-            {ads.map((item, idx) => (
-              <div
-                key={`${item.propertyId ?? idx}-${idx}`}
-                onClick={() => openModal(idx, ads)}
-                className="cursor-pointer overflow-hidden bg-black aspect-square relative"
-              >
-                {item.isVideo ? (
-                  <>
-                    {item.thumbnailUrl ? (
-                      <img src={item.thumbnailUrl} className="w-full h-full object-cover hover:opacity-90 transition" />
-                    ) : (
-                      <video
-                        src={item.videoUrl || item.mediaUrlFull}
-                        className="w-full h-full object-cover"
-                        muted
-                        preload="metadata"
-                      />
-                    )}
-                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                      <div className="bg-black/50 rounded-full w-10 h-10 flex items-center justify-center">
-                        <FaPlay className="text-white ml-0.5" size={16} />
-                      </div>
+          <>
+            {loadingPosts ? (
+              <div className="grid grid-cols-3 gap-4">
+                {[1, 2, 3, 4, 5, 6].map((i) => (
+                  <div key={i} className="rounded-xl border border-border bg-card overflow-hidden animate-pulse">
+                    <div className="p-2 flex items-center gap-2">
+                      <div className="h-8 w-8 rounded-lg bg-gray-200" />
+                      <div className="flex-1 h-4 bg-gray-200 rounded" />
                     </div>
-                  </>
-                ) : (
-                  <img src={item.mediaUrlFull} className="w-full h-full object-cover hover:opacity-90 transition" />
-                )}
+                    <div className="aspect-square bg-gray-200" />
+                    <div className="p-2 h-12 bg-gray-100" />
+                  </div>
+                ))}
               </div>
-            ))}
-            {ads.length === 0 && (
-              <div className="col-span-full text-center text-gray-500 py-8"> </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {ads.map((item, idx) => {
+                  const postCard = toPostCardShape(item);
+                  const isOwner = resolvedIsOwner && item.userId === loggedInUserId;
+                  return (
+                    <PostCard
+                      key={item.postId ?? idx}
+                      post={postCard}
+                      isFirst={idx === 0}
+                      isLiked={postCard.isLiked}
+                      onLike={(id) => toggleLike(Number(id))}
+                      onOpenPost={(id) => openPostModal(Number(id))}
+                      onOpenOptions={() => setOptionsPost({ ...postCard, postId: item.postId, userId: item.userId, isOwner })}
+                      compact
+                    />
+                  );
+                })}
+              </div>
             )}
-          </div>
+            {!loadingPosts && ads.length === 0 && (
+              <div className="col-span-full text-center text-gray-500 py-8">No posts yet</div>
+            )}
+          </>
         )}
 
+        {selectedPostId && (
+          <PostModal
+            post={
+              postDetails ||
+              (() => {
+                const source = [...ads, ...videoPosts].find(
+                  (p) => p.postId === selectedPostId
+                );
+                return source ? toPostCardShape(source) : null;
+              })()
+            }
+            open={!!selectedPostId}
+            onOpenChange={() => {
+              setPostDetails(null);
+              setSelectedPostId(null);
+            }}
+            isLiked={postDetails?.isLiked}
+            onLike={() => {
+              if (selectedPostId) toggleLike(selectedPostId);
+              setPostDetails((prev: any) =>
+                prev
+                  ? {
+                      ...prev,
+                      isLiked: !prev.isLiked,
+                      likesCount:
+                        (prev.likesCount ?? 0) + (prev.isLiked ? -1 : 1),
+                    }
+                  : prev
+              );
+            }}
+          />
+        )}
+        {optionsPost && (
+          <PostOptionDialog
+            open={!!optionsPost}
+            onClose={() => setOptionsPost(null)}
+            postId={optionsPost.postId ?? optionsPost.id}
+            username={optionsPost.username}
+            isOwner={optionsPost.isOwner ?? (resolvedIsOwner && optionsPost.userId === loggedInUserId)}
+            showUpdate={false}
+            onDelete={() => {
+              setDeletingId(optionsPost.postId ?? optionsPost.id);
+              setOptionsPost(null);
+            }}
+            onReport={() => {
+              setReportPostId(optionsPost.postId ?? optionsPost.id);
+              setOptionsPost(null);
+            }}
+            onBlock={() => {
+              const uid = optionsPost.userId ?? optionsPost.ownerUserId;
+              if (uid) {
+                setBlockTargetUser({
+                  userId: String(uid),
+                  username: optionsPost.username,
+                });
+              }
+              setOptionsPost(null);
+            }}
+          />
+        )}
+        {deletingId && (
+          <HeadlessDemo
+            key={`delete-${deletingId}`}
+            DeleteTrue={() => confirmDelete(deletingId)}
+            onCancel={() => setDeletingId(null)}
+            name="this post"
+            actionType="delete"
+          />
+        )}
+        {blockTargetUser && (
+          <HeadlessDemo
+            key={`block-${blockTargetUser.userId}`}
+            DeleteTrue={async () => {
+              const ok = await blockUser(blockTargetUser.userId, imageBase);
+              if (ok) setPosts((prev) => prev.filter((p) => String(p.userId) !== blockTargetUser.userId));
+              setBlockTargetUser(null);
+            }}
+            onCancel={() => setBlockTargetUser(null)}
+            name={blockTargetUser.username}
+            actionType="block"
+          />
+        )}
+        {reportPostId && (
+          <ReportModal
+            isOpen={!!reportPostId}
+            reportId={reportPostId}
+            onClose={() => setReportPostId(null)}
+            onSubmit={async (data) => {
+              const ok = await reportPost(data.reportId, { reason: data.reason, description: data.description }, imageBase);
+              if (ok) setReportPostId(null);
+            }}
+          />
+        )}
         {view === "videos" && (
-          <div className="grid grid-cols-3 gap-[2px]">
-            {videoPosts.map((item, idx) => (
-              <div
-                key={`video-${item.postId ?? idx}-${idx}`}
-                onClick={() => openModal(idx, videoPosts)}
-                className="cursor-pointer overflow-hidden bg-black aspect-square relative"
-              >
-                {item.thumbnailUrl ? (
-                  <img src={item.thumbnailUrl} className="w-full h-full object-cover hover:opacity-90 transition" />
-                ) : (
-                  <video
-                    src={item.videoUrl || item.mediaUrlFull}
-                    className="w-full h-full object-cover"
-                    muted
-                    preload="metadata"
-                  />
-                )}
-                <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                  <div className="bg-black/50 rounded-full w-10 h-10 flex items-center justify-center">
-                    <FaPlay className="text-white ml-0.5" size={16} />
+          <>
+            {loadingPosts ? (
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {[1, 2, 3, 4, 5, 6].map((i) => (
+                  <div key={i} className="rounded-xl border border-border bg-card overflow-hidden animate-pulse">
+                    <div className="p-2 flex items-center gap-2">
+                      <div className="h-8 w-8 rounded-lg bg-gray-200" />
+                      <div className="flex-1 h-4 bg-gray-200 rounded" />
+                    </div>
+                    <div className="aspect-square bg-gray-200" />
+                    <div className="p-2 h-12 bg-gray-100" />
                   </div>
-                </div>
+                ))}
               </div>
-            ))}
-            {videoPosts.length === 0 && (
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {videoPosts.map((item, idx) => {
+                  const postCard = toPostCardShape(item);
+                  const isOwner = resolvedIsOwner && item.userId === loggedInUserId;
+                  return (
+                    <PostCard
+                      key={item.postId ?? idx}
+                      post={postCard}
+                      isFirst={idx === 0}
+                      isLiked={postCard.isLiked}
+                      onLike={(id) => toggleLike(Number(id))}
+                      onOpenPost={(id) => openPostModal(Number(id))}
+                      onOpenOptions={() => setOptionsPost({ ...postCard, postId: item.postId, userId: item.userId, isOwner })}
+                      compact
+                    />
+                  );
+                })}
+              </div>
+            )}
+            {!loadingPosts && videoPosts.length === 0 && (
               <div className="col-span-full text-center text-gray-500 py-8">No videos yet</div>
             )}
-          </div>
+          </>
         )}
-
         {view === "properties" && (
           <>
             {loadingProperties ? (
@@ -371,151 +496,6 @@ const confirmDelete = async (postId: number) => {
           </>
         )}
       </div>
-
-      {modalOpen && (
-        <div className="fixed inset-0 bg-black z-[9999] flex items-center justify-center p-4">
-          <div className="absolute top-4 left-4 z-[10001]">
-            {/* Menu icon on left  */}
-            {modalItems[startIndex]?.type === "post" &&
-              resolvedIsOwner &&
-              modalItems[startIndex]?.userId === loggedInUserId && (
-                <div className="relative">
-                  {deletingId !== modalItems[startIndex]?.postId ? (
-                    <button
-                      onClick={() =>
-                        setMenuOpenId(menuOpenId === modalItems[startIndex]?.postId ? null : modalItems[startIndex]?.postId)
-                      }
-                      className="p-2 bg-white rounded-full"
-                    >
-                      <FaEllipsisV />
-                    </button>
-                  ) : null}
-
-                  {menuOpenId === modalItems[startIndex]?.postId && deletingId !== modalItems[startIndex]?.postId && (
-                    <div className="mt-2 bg-white border rounded shadow-md">
-        
-                      <button
-                        className="block w-full text-left px-4 py-2"
-                        onClick={() => {
-                          setMenuOpenId(null);
-                          setDeletingId(modalItems[startIndex]?.postId);
-                        }}
-                      >
-                        Delete
-                      </button>
-                    </div>
-                  )}
-
-   {deletingId === modalItems[startIndex]?.postId && (
-  <div className="fixed inset-0 z-[10002] flex items-center justify-center">
-    
-    {/* overlay */}
-    <div
-      className="absolute inset-0 bg-black/40"
-      onClick={() => setDeletingId(null)}
-    />
-
-    {/* confirm box */}
-    <div className="relative bg-white rounded-xl shadow-xl w-[320px] p-6 flex flex-col items-center gap-4">
-      
-      <p className="text-lg font-semibold text-gray-800 text-center">
-        Are you sure you want to delete this post?
-      </p>
-
-      <div className="flex gap-3 w-full">
-        <button
-          onClick={() => confirmDelete(modalItems[startIndex]?.postId)}
-          className="flex-1 bg-black  text-white py-2 rounded-lg transition"
-        >
-          Delete
-        </button>
-
-        <button
-          onClick={() => setDeletingId(null)}
-          className="flex-1 border border-gray-300 py-2 rounded-lg hover:bg-gray-100 transition"
-        >
-          Cancel
-        </button>
-      </div>
-    </div>
-  </div>
-)}
-
-
-                </div>
-              )}
-          </div>
-
-          <button
-            onClick={() => setModalOpen(false)}
-            className="absolute top-4 right-4 text-white z-[10001] p-2"
-          >
-            <FaTimes size={26} />
-          </button>
-
-          <div className="w-full h-full flex items-center justify-center">
-            <Swiper
-              modules={[Navigation, Keyboard]}
-              initialSlide={startIndex}
-              navigation
-              keyboard={{ enabled: true }}
-              loop={false}
-              className="w-full h-full flex items-center justify-center"
-            >
-     {modalItems.map((item, idx) => (
-  <SwiperSlide key={idx} className="flex items-center justify-center">
-    <div className="relative w-[90vw] h-[90vh] bg-black flex items-center justify-center">
-      
-      {/* video or image */}
-      {item.isVideo ? (
-        <video
-          src={item.videoUrl || item.mediaUrlFull}
-          controls
-          className="object-contain max-w-full max-h-full select-none"
-          style={{ outline: "none" }}
-        />
-      ) : (
-        item.mediaUrlFull && (
-          <img
-            src={item.mediaUrlFull}
-            alt=""
-            className="object-contain max-w-full max-h-full select-none"
-            style={{ imageRendering: "auto" }}
-          />
-        )
-      )}
-
-      {/* like overlay */}
-      {item.type === "post" && (
-        <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-3 text-white">
-          <button
-            onClick={() => {
-              if (item.postId) toggleLike(item.postId);
-            }}
-            aria-pressed={!!item.isLiked}
-            className="flex items-center justify-center"
-          >
-            <FaHeart
-              size={22}
-              color={item.isLiked ? "red" : "white"}
-            />
-          </button>
-
-          <span className="text-sm font-medium">
-            {item.likesCount ?? 0}
-          </span>
-        </div>
-      )}
-    </div>
-  </SwiperSlide>
-))}
-
-            </Swiper>
-          </div>
-        </div>
-      )}
-
-   
     </section>
   );
 };

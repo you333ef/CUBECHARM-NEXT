@@ -1,6 +1,7 @@
 "use client";
 
 import { useContext, useState, useEffect } from "react";
+import { usePathname } from "next/navigation";
 import AuthContext from "@/app/providers/AuthContext";
 import { EllipsisVertical } from "lucide-react";
 import axios from "axios";
@@ -34,7 +35,18 @@ export default function StoriesProfilee({
   onRequestAddAlbumWithStory?: () => void;
   onRequestAddStoryToAlbum?: () => void;
 }) {
+
   const { baseUrl } = useContext(AuthContext)!;
+  const pathname = typeof window !== "undefined" ? window.location.pathname : undefined;
+  const [alignClass, setAlignClass] = useState("justify-center items-center");
+
+  useEffect(() => {
+    if (pathname === "/" || pathname === "") {
+      setAlignClass("justify-start items-center");
+    } else {
+      setAlignClass("justify-center items-center");
+    }
+  }, [pathname]);
 
   const [albums, setAlbums] = useState<Album[]>(initialAlbums);
   const [menuOpenId, setMenuOpenId] = useState<number | null>(null);
@@ -46,7 +58,7 @@ export default function StoriesProfilee({
   useEffect(() => {
     setAlbums(initialAlbums);
   }, [initialAlbums])
-  if (!loading && (!Array.isArray(albums) || albums.length === 0) && viewerMode !== "owner") return null;
+ 
   const openStory = (albumId: number) => {
     const cleanedAlbums = albums.map(album => ({
       ...album,
@@ -110,11 +122,12 @@ export default function StoriesProfilee({
       toast.error(msg);
     }
   };
+  const isVideo = (url: string) => /\.(mp4|webm|ogg)$/i.test(url);
 
   return (
     <>
       <div className="overflow-visible">
-        <div className="flex justify-center md:justify-start gap-3 overflow-x-auto py-4 px-2 scrollbar-hide">
+        <div className={`flex gap-3 overflow-x-auto py-4 px-2 scrollbar-hide ${alignClass}`}>
         {viewerMode === "owner" && !loading && (
           <>
             <div className="flex-shrink-0 flex flex-col items-center gap-2">
@@ -177,11 +190,27 @@ export default function StoriesProfilee({
                   >
                     <div className="bg-white p-1 rounded-xl">
                       <div className="w-16 h-16 rounded-xl overflow-hidden">
-                        <img
-                          src={`http://localhost:5000/${firstSlide.mediaUrl}`}
-                          alt={album.albumName}
-                          className="w-full h-full object-cover"
-                        />
+                         {isVideo(firstSlide.mediaUrl) ? (
+    <video
+      src={`http://localhost:5000/${firstSlide.mediaUrl}`}
+      className="w-full h-full object-cover"
+      width={64}
+      height={64}
+      muted
+      playsInline
+      preload="metadata"
+    />
+  ) : (
+    <img
+      src={`http://localhost:5000/${firstSlide.mediaUrl}`}
+      alt={album.albumName}
+      className="w-full h-full object-cover"
+      width={64}
+      height={64}
+      loading="lazy"
+      decoding="async"
+    />
+  )}
                       </div>
                     </div>
 

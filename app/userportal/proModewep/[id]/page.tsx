@@ -9,7 +9,6 @@ import {
   useContext,
 } from "react";
 import Image from "next/image";
-import axios from "axios";
 import { useParams, useRouter } from "next/navigation";
 import PhotoSphereViewer from "../../componants/shared/PhotoSphereViewer";
 import AuthContext from "@/app/providers/AuthContext";
@@ -79,6 +78,8 @@ const { baseUrl, user } = auth;
     images: ApiImage[];
     index: number;
   } | null>(null);
+  const [viewerActive, setViewerActive] = useState(false);
+  const [viewerSrc, setViewerSrc] = useState<string | null>(null);
 
   const [optionsPost, setOptionsPost] = useState<any>(null);
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
@@ -137,19 +138,31 @@ setSelectedCell(null);
   const gridWidth = cols * CELL_SIZE;
   const gridHeight = rows * CELL_SIZE;
 
-  const onCellClick = (id: string) => {
-    const cell = cellMap[id];
-    if (!cell) return;
+const onCellClick = (id: string) => {
+  const cell = cellMap[id];
+  if (!cell) return;
 
-    setSelectedCell(prev => {
-      if (!prev || prev.id !== id) {
-        return { id, images: cell.images, index: 0 };
-      } else {
-        const nextIndex = (prev.index + 1) % prev.images.length;
-        return { id, images: prev.images, index: nextIndex };
-      }
-    });
-  };
+  setSelectedCell((prev) => {
+    let next: { id: string; images: ApiImage[]; index: number };
+
+    if (!prev || prev.id !== id) {
+      next = { id, images: cell.images, index: 0 };
+    } else {
+      const nextIndex = (prev.index + 1) % prev.images.length;
+      next = { id, images: prev.images, index: nextIndex };
+    }
+
+    const img = next.images[next.index];
+    if (isImage360(img) && img.url) {
+      setViewerSrc(img.url);
+      setViewerActive(true);
+    } else {
+      setViewerActive(false);
+    }
+
+    return next;
+  });
+};
 
   const grid = useMemo(() => {
     return Array.from({ length: rows }).map((_, row) => (
@@ -208,30 +221,46 @@ const  navi=  useRouter()
     setFloors([]);
   };
 
+  const isImage360 = (img?: ApiImage | null) =>
+    !!img &&
+    !!img.url &&
+    (img.is360 === true ||
+      img.url.toLowerCase().includes("360") ||
+      img.url.toLowerCase().includes("pano"));
+
+  const currentImage =
+    selectedCell && selectedCell.images.length
+      ? selectedCell.images[selectedCell.index]
+      : null;
+
   return (
     <div className="bg-[#f7f9fc] min-h-screen">
       <main className="max-w-screen-lg mx-auto p-6 space-y-8">
-        <section className="bg-white rounded-2xl shadow p-6">
-          <Suspense fallback={<div className="h-[600px]" />}>
-            {selectedCell ? (
-              selectedCell.images[selectedCell.index]?.is360 ? (
-                <PhotoSphereViewer src={selectedCell.images[selectedCell.index].url!} />
-              ) : (
+        <section className="bg-white rounded-2xl shadow p-6 space-y-3">
+          <div className="relative w-full max-w-4xl mx-auto">
+            {/* Fixed-height container to avoid CLS */}
+            <div className="relative w-full h-[420px] sm:h-[480px] md:h-[520px] bg-black rounded-xl overflow-hidden">
+              {currentImage?.url ? (
                 <Image
-                  src={selectedCell.images[selectedCell.index].url!}
-                  alt={selectedCell.images[selectedCell.index].name || "room"}
-                  width={1200}
-                  height={600}
+                  src={currentImage.url}
+                  alt={currentImage.name || "room"}
+                  fill
+                  sizes="(max-width: 768px) 100vw, (max-width: 1200px) 80vw, 900px"
+                  className="object-contain rounded-xl"
                   unoptimized
-                  className="w-full h-[600px] object-contain bg-black rounded-xl"
                 />
-              )
-            ) : (
-              <div className="h-[600px] flex items-center justify-center text-gray-500">
-                Select a cell
-              </div>
-            )}
-          </Suspense>
+              ) : (
+                <div className="w-full h-full flex items-center justify-center text-gray-500">
+                  Select a cell
+                </div>
+              )}
+
+              {/* 360 viewer overlay - mounted once, just hidden/shown */}
+              <Suspense fallback={null}>
+                <PhotoSphereViewer src={viewerSrc} active={viewerActive} />
+              </Suspense>
+            </div>
+          </div>
         </section>
 
         <section className="bg-white rounded-2xl shadow p-6 space-y-4">

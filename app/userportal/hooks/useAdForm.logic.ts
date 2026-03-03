@@ -1,11 +1,8 @@
 import { useEffect, useContext } from "react";
 import { useForm, UseFormReturn } from "react-hook-form";
 import { useRouter, useSearchParams } from "next/navigation";
-import axios from "axios";
 import { toast } from "sonner";
-import AuthContext from "@/app/providers/AuthContext";
-import { AdMedia } from "./useAdMedia.logic";
-import { getToken } from "@/app/AuthLayout/Token_Manager";
+import api from "@/app/AuthLayout/refresh";
 
 export type FormData = {
   category: string;
@@ -58,52 +55,40 @@ export const useAdForm = ({ isUpdate, propertyId, onMediaSync }: UseAdFormProps)
 });
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { baseUrl } = useContext(AuthContext)!;
   const source = searchParams.get("source");
   const isProModeFlow = source === "new_upload_with_pro_mode";
 
-  const token =
-    typeof window !== "undefined"
-      ? getToken()
-      : null;
-
-  const baseURL = "http://localhost:5000";
-
   // Fetch property data for update
   useEffect(() => {
-    if (!isUpdate || !token || !propertyId) return;
+    if (!isUpdate || !propertyId) return;
 
     const fetchProperty = async () => {
       try {
-        const res = await axios.get(`${baseUrl}/Property/${propertyId}`, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        });
+        const res = await api.get(`/Property/${propertyId}`);
 
         const data = res.data.data;
 
         // Parse location into city and address
       const city = data.city ?? "";
-const address = data.address ?? "";
-const link = data.link ?? "";
+      const address = data.address ?? "";
+      const link = data.link ?? "";
       form.reset({
-  title: data.title ?? "",
-  description: data.description ?? "",
-  category: "",
-  listingType: data.listingType === "Sale" ? "sale" : "rent",
-  price: String(data.price ?? ""),
-  currency: data.currency ?? "USD",
-  negotiable: data.negotiable ?? false,
-  size: String(data.totalArea ?? ""),
-  width: String(data.width ?? ""),
-  length: String(data.length ?? ""),
-  city: city,
-  address: address,
-  locationLink: link,
-  phone: "",
+        title: data.title ?? "",
+        description: data.description ?? "",
+        category: "",
+        listingType: data.listingType === "Sale" ? "sale" : "rent",
+        price: String(data.price ?? ""),
+        currency: data.currency ?? "USD",
+        negotiable: data.negotiable ?? false,
+        size: String(data.totalArea ?? data.size ?? ""),
+        width: String(data.width ?? ""),
+        length: String(data.length ?? ""),
+        city: city,
+        address: address,
+        locationLink: link,
+        phone: "",
 });
-        // Sync media
+       
         if (onMediaSync) {
           onMediaSync(data.media || []);
         }
@@ -114,15 +99,10 @@ const link = data.link ?? "";
     };
 
     fetchProperty();
-  }, [isUpdate, propertyId, token, baseUrl]);
+  }, [isUpdate, propertyId]);
 
   // Submit handler
   const onSubmit = async (data: FormData): Promise<number | undefined> => {
-    if (!token) {
-      toast.error("Unauthorized");
-      return;
-    }
-
     const payload = {
       title: data.title,
       description: data.description,
@@ -148,12 +128,7 @@ const link = data.link ?? "";
     try {
       if (isUpdate) {
         // UPDATE property
-        await axios.patch(`${baseUrl}/Property/${propertyId}`, payload, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
-        });
+        await api.patch(`/Property/${propertyId}`, payload);
 
         toast.success("Announcement updated successfully");
         router.push("/");
@@ -161,20 +136,11 @@ const link = data.link ?? "";
       }
 
       // CREATE property
-      const res = await axios.post(
-        `${baseUrl}/Property`,
-        {
-          ...payload,
-          categoryId: Number(data.category) || 1,
-          yearBuilt: new Date().getFullYear(),
-        },
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
-        }
-      );
+      const res = await api.post(`/Property`, {
+        ...payload,
+        categoryId: Number(data.category) || 1,
+        yearBuilt: new Date().getFullYear(),
+      });
 
       const newPropertyId = res.data.data.propertyId;
 

@@ -7,7 +7,6 @@ import Image from "next/image";
 import { toast } from "sonner";
 import axios from "axios";
 import AuthContext from "@/app/providers/AuthContext";
-import IMAGE from "../../../public/images/a9054bca-63af-4ee6-a443-e15e322569c3.png";
 import {
  
   FaCamera,
@@ -48,7 +47,8 @@ export default function ActivityPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { role } = useContext(AuthContext)!;
-  // Open AddPostModal if openPostModal param is present
+  const [postDetailsCache, setPostDetailsCache] = useState<Record<number, any>>({});
+  const [composerAvatar, setComposerAvatar] = useState<string>("/block-Photi.jpg");
   useEffect(() => {
     if (searchParams.get("openPostModal") === "true") {
       setShowAddPostModal(true);
@@ -56,7 +56,6 @@ export default function ActivityPage() {
     }
   }, [searchParams]);
 
-  // Open PostModal for a specific post if postId param is present
   useEffect(() => {
     const postIdParam = searchParams.get("postId");
     if (postIdParam) {
@@ -107,6 +106,36 @@ export default function ActivityPage() {
     const interval = setInterval(fetchFollowingStories, 10000);
     return () => clearInterval(interval);
   }, [fetchFollowingStories]);
+
+  // Load current user's profile image for the composer avatar
+  useEffect(() => {
+    const fetchMyProfileAvatar = async () => {
+      try {
+        const res = await api.get("/users/profiles/me");
+        const profile = res?.data?.data;
+        const raw: string | null | undefined = profile?.profilePicture;
+
+        const mediaBase ='http://localhost:5000'
+         
+        if (raw && typeof raw === "string" && raw.trim().length > 0) {
+          const trimmed = raw.trim();
+          const isHttp = /^https?:\/\//i.test(trimmed);
+
+          const resolved = isHttp
+            ? trimmed
+            : `${mediaBase}/${trimmed.replace(/^\//, "")}`;
+
+          setComposerAvatar(resolved);
+        } else {
+          setComposerAvatar("/block-Photi.jpg");
+        }
+      } catch {
+        setComposerAvatar("/block-Photi.jpg");
+      }
+    };
+
+    fetchMyProfileAvatar();
+  }, []);
   //  properties when ads tab is selected
   useEffect(() => {
     if (activeTab === "ads" && properties.length === 0) {
@@ -120,10 +149,18 @@ export default function ActivityPage() {
   };
   //    post details
   const loadPostDetails = async (postId: number) => {
+    const cached = postDetailsCache[postId];
+    if (cached) {
+      setPostDetails(cached);
+      return cached;
+    }
     const details = await getPostDetails(postId, baseUrl);
     if (details) {
       setPostDetails(details);
+      setPostDetailsCache((prev) => ({ ...prev, [postId]: details }));
+      return details;
     }
+    return null;
   };
 // Handler
 const handleCreatePost = async (payload: { content: string; media?: File[] }) => {
@@ -143,7 +180,6 @@ const handleCreatePost = async (payload: { content: string; media?: File[] }) =>
 
   return null;
 };
-
 
 
 
@@ -243,12 +279,15 @@ type ConfirmAction = "delete" | "block" | null;
          
              <div className="mt-6 bg-white border border-gray-200 rounded-xl p-4 shadow-sm">
              <div className="flex items-center gap-3">
-              <Image
-                    src={IMAGE}
+              <img
+                    src={composerAvatar || "/block-Photi.jpg"}
                     alt="Your profile picture"
                       width={44}
                 height={44}
                 className="rounded-xl ring-2 ring-gray-100 object-cover h-11 w-11"
+                onError={(e) => {
+                  e.currentTarget.src = "/block-Photi.jpg";
+                }}
               />
               <button
                 onClick={openPostModal}
@@ -312,11 +351,16 @@ type ConfirmAction = "delete" | "block" | null;
             isLiked={post.isLiked}
             onLike={handleToggleLike}
             onOpenPost={async (target: any) => {
-              if (typeof target === "number") {
-                setPostDetails(null); 
-                setSelectedPost(target);
-                await loadPostDetails(target);
-              } else {
+              // Always open modal by postId and update URL
+              const postId = typeof target === "number" ? target : Number(target);
+              if (!isNaN(postId)) {
+                setPostDetails(null);
+                setSelectedPost(postId);
+                await loadPostDetails(postId);
+                const url = new URL(window.location.href);
+                url.searchParams.set("postId", postId.toString());
+                window.history.replaceState({}, "", url.pathname + url.search);
+              } else if (typeof target === "string") {
                 router.push(target);
               }
             }}
@@ -408,18 +452,43 @@ type ConfirmAction = "delete" | "block" | null;
         <StoryViewer onStoryDeleted={fetchFollowingStories} />
         {/* 7 */}
         
-        {selectedPost &&  postDetails && (
-          <PostModal
-            post={postDetails}
-              key={selectedPost} 
-            open={!!selectedPost}
-            onOpenChange={(open: boolean) => !open && setSelectedPost(null)}
-            isLiked={postDetails.isLiked}
-            onLike={() => handleToggleLike(postDetails.id)}
-              adminMode={role === "admin" && searchParams.get("mode") === "admin"}
-            reportId={Number(searchParams.get("reportId")) || null}
+        {selectedPost && (
+          (() => {
+            const currentPost =
+              postDetails ||
+              activityFeed.find((p) => p.id === selectedPost) ||
+              null;
+            if (!currentPost) return null;
 
-          />
+            return (
+              <PostModal
+                post={currentPost}
+                key={selectedPost}
+                open={!!selectedPost}
+                onOpenChange={(open: boolean) => {
+                  if (!open) {
+                    setSelectedPost(null);
+                    const url = new URL(window.location.href);
+                    url.searchParams.delete("postId");
+                    window.history.replaceState(
+                      {},
+                      "",
+                      url.pathname + url.search
+                    );
+                  }
+                }}
+                isLiked={!!currentPost.isLiked}
+                onLike={() =>
+                  currentPost.id &&
+                  handleToggleLike(String(currentPost.id))
+                }
+                adminMode={
+                  role === "admin" && searchParams.get("mode") === "admin"
+                }
+                reportId={Number(searchParams.get("reportId")) || null}
+              />
+            );
+          })()
         )}
         {optionsPost && (
           <PostOptionDialog

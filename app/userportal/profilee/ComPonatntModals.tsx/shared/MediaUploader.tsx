@@ -83,17 +83,17 @@ export default function MediaUploader({ file, previewUrl, onSelect }: Props) {
       )}
 
       {file && previewUrl && (
-        <div className="relative flex justify-center items-center h-[200px] w-full overflow-hidden">
+        <div className="relative flex justify-center items-center h-[115px] w-full overflow-hidden">
           {file.type.startsWith("image/") ? (
             <img
               src={previewUrl}
               alt="Preview"
-              className="h-[180px] w-full object-contain max-w-full"
+              className="h-[100px] w-full object-contain max-w-full"
             />
           ) : (
             <video
               src={previewUrl}
-              className="h-[180px] w-full object-contain max-w-full"
+              className="h-[100px] w-full object-contain max-w-full"
               controls
               loop
               muted

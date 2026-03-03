@@ -41,11 +41,11 @@ export default function CategoryPage() {
         setPostsLoading(true);
 
         const res = await fetchPostsByCategory(
-          baseUrl,
+         
           mainCategoryId,
           subCategoryId,
           pageNum,
-          24
+         
         );
 
         if (requestId !== requestRef.current) return;
@@ -89,7 +89,7 @@ export default function CategoryPage() {
         setVisibleSubs([]);
         setPage(1);
 
-        const res = await fetchCategories(baseUrl);
+        const res = await fetchCategories();
         const cat = res.data.find((c) => c.id === categoryId);
         if (!cat) return;
 

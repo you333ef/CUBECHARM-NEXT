@@ -9,12 +9,13 @@ import { useRouter } from "next/navigation";
 import AuthContext from "@/app/providers/AuthContext";
 import { getReports, MappedReport } from "./services/adminReports";
 import api from "@/app/AuthLayout/refresh";
-// ================= COMPONENT =================
+import { getToken } from "@/app/AuthLayout/Token_Manager";
+// == COMPONENT =
 const REPORTS = () => {
   const navigate = useRouter();
   const { baseUrl } = useContext(AuthContext)!;
   const accessToken =
-    typeof window !== "undefined" ? localStorage.getItem("accessToken") : null;
+    typeof window !== "undefined" ? getToken() : null;
 
   const [DATA_REPORTS, setDATA_REPORTS] = useState<MappedReport[]>([]);
   const [sortOrder, setSortOrder] = useState<"latest" | "oldest">("latest");
@@ -111,29 +112,20 @@ const REPORTS = () => {
  const handleDeleteContent = async (item: MappedReport) => {
   try {
     const propertyId = resolvePropertyId(item);
-
-   
     await api.delete(
       `/admin/properties/${propertyId}`,
     );
-
-    
     await api.delete(
       `/admin/reports/${item.id}`,
     );
-
-    
     setDATA_REPORTS((prev) => prev.filter((r) => r.id !== item.id));
-
     cancelAnyConfirm();
-
     toast.success(`Content and report deleted`);
   } catch (err: any) {
     toast.error(err?.response?.data?.message || err.message);
     console.error(err);
   }
 };
-
   const handleDismiss = async (item: MappedReport) => {
     try {
       await api.patch(

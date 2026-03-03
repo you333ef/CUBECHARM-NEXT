@@ -32,10 +32,14 @@ const PostOptionDialogClient: React.FC<PostOptionDialogProps> = ({
   onReport,
   GETACTIVITY_FeeD,
 }) => {
+
+
   if (!open) return null;
 
   const copyLink = () => {
-    navigator.clipboard.writeText(`https://yourapp.com/post/${postId}`);
+    // Use the actual path to the post in the activity feed
+    const postUrl = `${window.location.origin}/userportal/activity?postId=${postId}`;
+    navigator.clipboard.writeText(postUrl);
     toast.success("Link copied to clipboard");
   };
 
@@ -72,10 +76,13 @@ const PostOptionDialogClient: React.FC<PostOptionDialogProps> = ({
     )}
 
               <button
-                onClick={copyLink}
+                onClick={() => {
+                  copyLink();
+                  onClose?.();
+                }}
                 className="py-3 px-4 text-sm hover:bg-gray-100 border-b"
               >
-                Copy
+                Copy link
               </button>
             </>
           ) : (
@@ -94,6 +101,15 @@ const PostOptionDialogClient: React.FC<PostOptionDialogProps> = ({
                 className="py-3 px-4 text-sm hover:bg-gray-100 border-b"
               >
                 Block
+              </button>
+              <button
+                onClick={() => {
+                  copyLink();
+                  onClose?.();
+                }}
+                className="py-3 px-4 text-sm hover:bg-gray-100 border-b"
+              >
+                Copy link
               </button>
             </>
           )}

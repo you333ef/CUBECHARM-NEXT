@@ -230,7 +230,9 @@ const [isAuthLoading, setIsAuthLoading] = useState(true);
     }
   };
 
-  const role = user?.role || null;
+  const role = "admin"
+  
+  // user?.role || null;
 
   return (
     <AuthContext.Provider

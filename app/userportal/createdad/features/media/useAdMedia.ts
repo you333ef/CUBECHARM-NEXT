@@ -1,10 +1,9 @@
 import { useState } from "react";
-import axios from "axios";
 import api from "@/app/AuthLayout/refresh";
 
 export interface AdMedia {
   id?: number;
-  uid?: string; 
+  uid?: string;
   file?: File;
   url?: string;
   type: "image" | "video";
@@ -14,14 +13,12 @@ export interface AdMedia {
 
 interface UseAdMediaProps {
   baseUrl: string;
- 
 }
 
-export const useAdMedia = ({  }: UseAdMediaProps) => {
+export const useAdMedia = ({ }: UseAdMediaProps) => {
   const [media, setMedia] = useState<AdMedia[]>([]);
   const [mainMediaCount, setMainMediaCount] = useState(0);
 
-  // Add new media files
   const addMedia = (files: FileList | null, type: "image" | "video") => {
     if (!files) return;
 
@@ -41,19 +38,15 @@ export const useAdMedia = ({  }: UseAdMediaProps) => {
     });
   };
 
-  // Remove media by id, uid, or index
   const removeMedia = (identifier: number | string) => {
     setMedia((prev) => {
       const updated = prev.filter((item) => {
-        // Match by API id
         if (item.id && item.id === identifier) return false;
-        // Match by uid (local media)
         if (item.uid && item.uid === identifier) return false;
         return true;
       });
 
-      //  object URLs for removed items
-      prev.map((item) => {
+      prev.forEach((item) => {
         if (!updated.includes(item) && item.url?.startsWith("blob:")) {
           URL.revokeObjectURL(item.url);
         }
@@ -63,42 +56,46 @@ export const useAdMedia = ({  }: UseAdMediaProps) => {
     });
   };
 
-  // Set/unset main media (support up to 2 main images)
   const setMain = (identifier: number | string) => {
-    setMedia((prev) =>
-      prev.map((item) => {
-        // Match by id or uid
-        const isMatch = (item.id && item.id === identifier) || (item.uid && item.uid === identifier);
+    setMedia((prev) => {
+      const target = prev.find(
+        (item) =>
+          item.type === "image" &&
+          ((item.id && item.id === identifier) || (item.uid && item.uid === identifier))
+      );
+
+      const shouldSetMain = target ? !target.isMain : true;
+
+      const updated = prev.map((item) => {
+        if (item.type === "video" && item.isMain) {
+          return { ...item, isMain: false };
+        }
+
+        const isMatch =
+          item.type === "image" &&
+          ((item.id && item.id === identifier) || (item.uid && item.uid === identifier));
 
         if (isMatch) {
-          // Toggle if already main
-          if (item.isMain) {
-            return { ...item, isMain: false };
-          }
+          return { ...item, isMain: shouldSetMain };
+        }
 
-          // If already have 2 main items, don't add more
-          const mainCount = prev.filter((m) => m.isMain).length;
-          if (mainCount >= 2) {
-            return item;
-          }
-
-          return { ...item, isMain: true };
+        if (shouldSetMain && item.type === "image") {
+          return { ...item, isMain: false };
         }
 
         return item;
-      })
-    );
+      });
 
-    // Update count
-    const newCount = media.filter((m) => m.isMain).length;
-    setMainMediaCount(newCount);
+      const newCount = updated.filter((m) => m.isMain && m.type === "image").length;
+      setMainMediaCount(newCount);
+      return updated;
+    });
   };
 
-  // Sync API media on load (merges with existing local media, doesn't overwrite)
   const syncFromApi = (apiMedia: any[], baseURL?: string) => {
     const defaultBaseUrl = "http://localhost:5000";
     const finalBaseUrl = baseURL || defaultBaseUrl;
-    
+
     const synced: AdMedia[] = apiMedia.map((item) => ({
       id: item.mediaId,
       url: `${finalBaseUrl}/${item.localPath}`,
@@ -107,23 +104,20 @@ export const useAdMedia = ({  }: UseAdMediaProps) => {
       status: "uploaded",
     }));
 
-    // Merge: Keep API media + preserve any pending local uploads
     setMedia((prev) => {
       const pendingLocal = prev.filter((m) => m.status === "pending");
       return [...synced, ...pendingLocal];
     });
-    
+
     const mainCount = synced.filter((m) => m.isMain).length;
     setMainMediaCount(mainCount);
   };
 
-  // Upload new media files (not from API)
   const uploadNewMedia = async (propertyId: number) => {
     const pendingMedia = media.filter((m) => m.status === "pending" && m.file);
 
-    if (pendingMedia.length === 0) return;
+    if (pendingMedia.length === 0) return [];
 
-    // Upload in parallel
     const uploadPromises = pendingMedia.map(async (item) => {
       if (!item.file) return;
 
@@ -136,21 +130,20 @@ export const useAdMedia = ({  }: UseAdMediaProps) => {
       formData.append("AnyRequiredField2", "temp");
 
       try {
-        const res = await api.post(
-          `/Property/${propertyId}/media`,
-          formData,
-         
-        );
+        const res = await api.post(`/Property/${propertyId}/media`, formData, {});
 
-        return { file: item.file, status: "uploaded" as const, id: res.data?.data?.mediaId };
-      } catch (error) {
+        return {
+          file: item.file,
+          status: "uploaded" as const,
+          id: res.data?.data?.mediaId,
+        };
+      } catch {
         return { file: item.file, status: "error" as const };
       }
     });
 
     const results = await Promise.all(uploadPromises);
 
-    // Update media statuses and add returned ID
     setMedia((prev) =>
       prev.map((item) => {
         const result = results.find((r) => r?.file === item.file);
@@ -160,47 +153,47 @@ export const useAdMedia = ({  }: UseAdMediaProps) => {
         return item;
       })
     );
+    return results;
   };
 
-  // Set main media on API (for update mode)
   const setMainOnApi = async (propertyId: number, mediaId: number) => {
     try {
-      await api.patch(
-        `/Property/${propertyId}/media/${mediaId}/set-main`,
-        {},
-      
-      );
+      await api.patch(`/Property/${propertyId}/media/${mediaId}/set-main`, {}, {});
 
-      // Update local state
-      setMedia((prev) =>
-        prev.map((item) => {
-          if (item.id === mediaId) {
-            const newIsMain = !item.isMain;
-            // If enabling main, check 2-main limit
-            if (newIsMain) {
-              const mainCount = prev.filter((m) => m.isMain).length;
-              if (mainCount >= 2) return item;
-            }
-            return { ...item, isMain: newIsMain };
+      setMedia((prev) => {
+        const updated = prev.map((item) => {
+          if (item.type === "video" && item.isMain) {
+            return { ...item, isMain: false };
           }
+
+          if (item.id === mediaId && item.type === "image") {
+            const newIsMain = !item.isMain;
+
+            if (!newIsMain) {
+              return { ...item, isMain: false };
+            }
+
+            return { ...item, isMain: true };
+          }
+
+          if (item.type === "image") {
+            return { ...item, isMain: false };
+          }
+
           return item;
-        })
-      );
+        });
+        const mainCount = updated.filter((m) => m.isMain && m.type === "image").length;
+        setMainMediaCount(mainCount);
+        return updated;
+      });
     } catch (error) {
       console.error("Failed to set main media", error);
       throw error;
     }
   };
-
-  // Delete media from API
   const deleteMediaFromApi = async (propertyId: number, mediaId: number) => {
     try {
-      await api.delete(
-        `/Property/${propertyId}/media/${mediaId}`,
-        
-      );
-
-      // Remove from local state
+      await api.delete(`/Property/${propertyId}/media/${mediaId}`, {});
       removeMedia(mediaId);
     } catch (error) {
       console.error("Failed to delete media", error);
@@ -208,7 +201,6 @@ export const useAdMedia = ({  }: UseAdMediaProps) => {
     }
   };
 
-  // Get count of different media types
   const getMediaStats = () => {
     const images = media.filter((m) => m.type === "image").length;
     const videos = media.filter((m) => m.type === "video").length;
@@ -218,7 +210,6 @@ export const useAdMedia = ({  }: UseAdMediaProps) => {
     return { images, videos, mainCount, totalCount };
   };
 
-  // Validation
   const validateMedia = () => {
     return {
       hasMinimum: media.length >= 4,
@@ -245,3 +236,4 @@ export const useAdMedia = ({  }: UseAdMediaProps) => {
     validateMedia,
   };
 };
+

@@ -1,14 +1,20 @@
 "use client";
 import { useContext, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import dynamic from "next/dynamic";
 import { FiMoreVertical, FiX } from "react-icons/fi";
 import { toast } from "sonner";
-import { FaHeart, FaRegBookmark, FaSmile } from "react-icons/fa";
+import { FaHeart, FaRegBookmark } from "react-icons/fa";
 import { FaPaperPlane } from "react-icons/fa6";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import AuthContext from "@/app/providers/AuthContext";
 import api from "@/app/AuthLayout/refresh";
+
+const ReactPhotoSphereViewer = dynamic(
+  () => import("./ReactPhotoSphereViewer").then((mod) => ({ default: mod.default })),
+  { ssr: false }
+);
 
 /* ---------- helpers ---------- */
 const limitWords = (text: string, limit = 3) => {
@@ -23,7 +29,7 @@ const Dialog = ({ open, onOpenChange, children }: any) => {
   return createPortal(
     <div
       className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/60"
-      onClick={() => onOpenChange(false)} 
+      onClick={() => onOpenChange(false)}
     >
       <div
         className="bg-white w-full max-w-md md:max-w-4xl h-[95vh] rounded-xl overflow-hidden"
@@ -59,23 +65,27 @@ const PostModal = ({
   const [commentText, setCommentText] = useState("");
   const [editingCommentId, setEditingCommentId] = useState<number | null>(null);
   const isVideo = !!post?.hasVideo;
+  const is360 = !!post?.is360;
 
   useEffect(() => {
     if (post?.comments) setComments(post.comments);
   }, [post]);
 
-
-
   /* ---------- Handle Close Modal ---------- */
- const handleCloseModal = () => {
-  if (videoRef.current) {
-    videoRef.current.pause();
-  }
-  onOpenChange(false);
-  if (adminMode) {
-    navigate.replace("/userportal/activity");
-  }
-};
+  const handleCloseModal = () => {
+    if (videoRef.current) {
+      videoRef.current.pause();
+    }
+
+    onOpenChange(false);
+
+    if (adminMode) {
+      const url = new URL(window.location.href);
+      url.search = "";
+      navigate.replace(url.pathname);
+    }
+  };
+
   /* ---------- comment handlers ---------- */
   const handleComment = async () => {
     if (!commentText.trim() || !post?.id) return;
@@ -197,7 +207,8 @@ const PostModal = ({
   useEffect(() => {
     setLocalLiked(isLiked);
   }, [isLiked]);
-const videoRef = useRef<HTMLVideoElement | null>(null);
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const [show360Viewer, setShow360Viewer] = useState(false);
   const [openMenuId, setOpenMenuId] = useState<number | null>(null);
   const [confirmAction, setConfirmAction] = useState<
     { type: "delete" | "report"; commentId: number } | null
@@ -205,27 +216,59 @@ const videoRef = useRef<HTMLVideoElement | null>(null);
 
   const mediaUrl = isVideo ? post.videoUrl || "" : post.postImage || "/images/not-found.svg";
 
+  useEffect(() => {
+    if (open && is360) {
+      const id = window.setTimeout(() => setShow360Viewer(true), 0);
+      return () => {
+        window.clearTimeout(id);
+        setShow360Viewer(false);
+      };
+    }
+    setShow360Viewer(false);
+  }, [open, is360]);
+
+  const is360SrcExternal =
+    typeof mediaUrl === "string" &&
+    (mediaUrl.startsWith("http://") || mediaUrl.startsWith("https://"));
+  const viewer360Src =
+    is360 && is360SrcExternal
+      ? `/api/proxy-image?url=${encodeURIComponent(mediaUrl)}`
+      : mediaUrl;
+
   return (
     <Dialog open={open} onOpenChange={handleCloseModal}>
-      <div className="flex flex-col md:flex-row h-full">
-        {/* MEDIA (Image or Video) */}
-        <div className="relative w-full md:w-2/3 h-[300px] md:h-full bg-black">
+      <div className="flex flex-col md:flex-row h-full min-h-0 overflow-hidden">
+        <div className="relative w-full md:w-2/3 h-[40vh] md:h-full bg-black flex-shrink-0">
           {isVideo ? (
             <video
-             ref={videoRef}
+              ref={videoRef}
               src={mediaUrl}
               controls
               playsInline
               preload="metadata"
               className="absolute inset-0 w-full h-full object-contain"
             />
+          ) : is360 ? (
+            <div className="absolute inset-0 w-full h-full">
+              {show360Viewer ? (
+                <ReactPhotoSphereViewer
+                  src={viewer360Src}
+                  width="100%"
+                  height="100%"
+                />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center text-white text-sm">
+                  Loading 360 view...
+                </div>
+              )}
+            </div>
           ) : (
             <Image src={mediaUrl} alt="post" fill unoptimized className="object-contain" />
           )}
         </div>
 
         {/* RIGHT PANEL */}
-        <div className="flex flex-col w-full md:w-1/3 h-full">
+        <div className="flex flex-col w-full md:w-1/3 flex-1 min-h-0 bg-white">
           {/* HEADER */}
           <div className="flex items-center justify-between p-4 border-b">
             <div
@@ -274,8 +317,13 @@ const videoRef = useRef<HTMLVideoElement | null>(null);
             </div>
           )}
 
-          {/* COMMENTS */}
-          <ScrollArea className="flex-1 px-4 py-3 space-y-3">
+          {/* scrollable area*/}
+          <ScrollArea className="flex-1 min-h-0 px-4 py-3 space-y-3">
+            {comments.length === 0 && (
+              <p className="text-xs text-gray-400 text-center">
+                No comments yet. Be the first to comment.
+              </p>
+            )}
             {comments.map((comment) => {
               const isOwner = comment.userId === currentUserId;
               const isMenuOpen = openMenuId === comment.commentId;
@@ -283,7 +331,8 @@ const videoRef = useRef<HTMLVideoElement | null>(null);
                 <div key={comment.commentId} className="flex gap-2 items-start relative">
                   <div className="flex-1 bg-gray-100 rounded-lg px-3 py-2">
                     <p className="text-xs font-semibold">{comment.username}</p>
-                    <p className="text-xs">{limitWords(comment.content, 10)}</p>
+                    {/* Updated Added break-words for better text wrapping in comments */}
+                    <p className="text-xs break-words">{comment.content}</p>
                   </div>
                   <button
                     onClick={() => setOpenMenuId(isMenuOpen ? null : comment.commentId)}
@@ -342,10 +391,9 @@ const videoRef = useRef<HTMLVideoElement | null>(null);
             })}
           </ScrollArea>
 
-          {/* INPUT */}
-          <div className="border-t px-4 py-3">
+          {/* INPUT always visible at bottom */}
+          <div className="border-t px-4 py-3 bg-white flex-shrink-0">
             <div className="flex items-center gap-2 mb-3">
-              {/* <FaSmile className="text-gray-500" /> */}
               <input
                 className="flex-1 text-sm outline-none bg-transparent"
                 placeholder="Add a comment..."
@@ -371,7 +419,6 @@ const videoRef = useRef<HTMLVideoElement | null>(null);
                   }}
                   className={`cursor-pointer transition ${localLiked ? "text-red-500" : "text-gray-700"}`}
                 />
-              
               </div>
               <FaRegBookmark size={18} className="cursor-pointer text-gray-700 pointer-events-auto" />
             </div>

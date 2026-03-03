@@ -24,7 +24,7 @@ const CategoryBar: React.FC = () => {
 
     const loadCategories = async () => {
       try {
-        const res = await fetchCategories(baseUrl);        
+        const res = await fetchCategories();        
         if (res.success) {
           setCategories(res.data);
           localStorage.setItem("categories", JSON.stringify(res.data));
